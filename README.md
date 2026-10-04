@@ -20,6 +20,7 @@ TypeScript, `discord.js`, and `@discordjs/voice` have been selected. `/help`, `/
 - `npm install`: install dependencies.
 - `npm run dev`: start in development mode.
 - `npm run build`: compile TypeScript to `dist/`.
+- `npm run lint`: lint the code with Oxlint (`.oxlintrc.json`).
 - `npm test`: run the unit tests.
 - `npm start`: start the compiled version using variables from `.env`.
 

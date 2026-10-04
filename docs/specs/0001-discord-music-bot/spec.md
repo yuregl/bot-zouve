@@ -61,6 +61,7 @@ Create a bot for Discord servers that lets members control music in a voice chan
 - **Voice library:** `@discordjs/voice` for Discord voice connections and audio playback.
 - **Audio source:** YouTube video links via `yt-dlp`, run through the `youtube-dl-exec` package (which downloads the `yt-dlp` binary on install), selected by the project owner on 2026-10-04. It replaced `@distube/ytdl-core`, which could no longer extract any YouTube video ("Failed to find any playable formats") and has not been updated since June 2025. `yt-dlp` uses the bot's own Node.js as its JavaScript runtime for YouTube extraction. Playlist and radio parameters in a link are ignored; only the video is played. Only individual YouTube video links are accepted; search by name, playlists, and live streams are not supported yet. Audio is streamed as WebM/Opus without re-encoding, so no FFmpeg or Opus encoder is required. Known risks: retrieving YouTube audio this way is not covered by YouTube's Terms of Service, and the extractor can break when YouTube changes its site; `yt-dlp` is updated frequently, so keep `youtube-dl-exec` up to date.
 - **Tests:** Node.js built-in test runner (`node --test`) executed through `tsx`.
+- **Linting:** Oxlint, which implements ESLint and typescript-eslint rules. ESLint itself was not used because `typescript-eslint` requires TypeScript below 6.1 and the project uses TypeScript 7. Type-aware rules are not enabled.
 - **Initial minimum runtime:** Node.js 22.12, compatible with the initial setup and the selected library version.
 
 ## Open decisions
