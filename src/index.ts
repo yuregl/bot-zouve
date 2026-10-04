@@ -1,20 +1,38 @@
 import { Client, Events, GatewayIntentBits } from "discord.js";
 import { registerCommands } from "./commands/index.js";
+import { createLogger } from "./logger.js";
+import { MusicManager } from "./music/music-manager.js";
+
+const logger = createLogger("bot");
+
+process.on("unhandledRejection", (reason) => {
+  logger.error("Unhandled promise rejection", undefined, reason);
+});
+
+process.on("uncaughtException", (error) => {
+  logger.error("Uncaught exception; exiting", undefined, error);
+  process.exit(1);
+});
 
 const token = process.env.DISCORD_TOKEN;
 
 if (!token) {
-  throw new Error("A variável DISCORD_TOKEN não foi definida.");
+  throw new Error("The DISCORD_TOKEN environment variable is not set.");
 }
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
 });
 
-registerCommands(client);
+const musicManager = new MusicManager();
+
+registerCommands(client, musicManager);
+
+client.on(Events.Error, (error) => logger.error("Discord client error", undefined, error));
+client.on(Events.Warn, (message) => logger.warn(message));
 
 client.once(Events.ClientReady, async (readyClient) => {
-  console.info(`Bot conectado como ${readyClient.user.tag}.`);
+  logger.info("Bot connected", { user: readyClient.user.tag, guilds: readyClient.guilds.cache.size });
 });
 
 await client.login(token);

@@ -10,10 +10,13 @@
     "dev": "node --env-file=.env --import tsx --watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.json",
-    "start": "node --env-file=.env dist/index.js"
+    "start": "node --env-file=.env dist/index.js",
+    "test": "node --import tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
-    "discord.js": "^14.27.0"
+    "@discordjs/voice": "^0.19.2",
+    "discord.js": "^14.27.0",
+    "youtube-dl-exec": "^3.1.17"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
