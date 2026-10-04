@@ -1,4 +1,5 @@
 import { Client, Events, GatewayIntentBits } from "discord.js";
+import { registerCommands } from "./commands/index.js";
 
 const token = process.env.DISCORD_TOKEN;
 
@@ -10,7 +11,9 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
 
-client.once(Events.ClientReady, (readyClient) => {
+registerCommands(client);
+
+client.once(Events.ClientReady, async (readyClient) => {
   console.info(`Bot conectado como ${readyClient.user.tag}.`);
 });
 
