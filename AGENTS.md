@@ -23,3 +23,9 @@
 - Execute os testes, verificações estáticas e build aplicáveis ao projeto; relate comandos e resultados.
 - Mantenha a documentação de configuração e operação alinhada ao comportamento real.
 - Não implemente funcionalidades dependentes de um provedor de áudio até que o provedor e seus termos de uso tenham sido avaliados e aprovados.
+
+## Commits
+
+- Use Conventional Commits: `<tipo>(escopo opcional): descrição curta`, por exemplo `feat: add music queue`.
+- Use tipos padronizados como `feat`, `fix`, `docs`, `refactor`, `test`, `build` e `chore`.
+- Não adicione trailers `Co-authored-by` às mensagens de commit.

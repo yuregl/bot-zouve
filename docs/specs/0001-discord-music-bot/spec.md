@@ -49,9 +49,14 @@ Criar um bot para servidores Discord que permita aos membros controlar música e
 - Comandos administrativos, playlists persistentes, busca avançada, recomendações, painel web e monetização.
 - Reprodução simultânea em múltiplos canais do mesmo servidor.
 
+## Decisões confirmadas
+
+- **Linguagem:** TypeScript.
+- **Biblioteca Discord:** `discord.js`, biblioteca comunitária para a API do Discord; não existe um SDK oficial geral da Discord para bots TypeScript.
+- **Runtime mínimo inicial:** Node.js 22.12, compatível com a configuração inicial e a versão atual da biblioteca escolhida.
+
 ## Decisões pendentes
 
-- Linguagem, biblioteca do Discord e versão de runtime.
 - Provedor(es) e formatos de entrada de áudio, incluindo avaliação de termos de uso e restrições aplicáveis.
 - Política de acesso aos comandos: qualquer membro ou apenas funções/permissões específicas.
 - Semântica e limites de `/loop` e `/volume`; tamanho máximo da fila e comportamento quando ela termina.

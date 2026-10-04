@@ -11,7 +11,18 @@ Bot de música para Discord. O projeto usa desenvolvimento orientado a especific
 
 ## Estado
 
-O repositório está na fase de definição. Linguagem, biblioteca do Discord, provedor de áudio e implantação ainda precisam ser decididos. Não há código executável nem credenciais configuradas.
+TypeScript e `discord.js` foram escolhidos. O projeto tem uma base inicial executável; provedor de áudio e implantação ainda precisam ser decididos.
+
+## Desenvolvimento
+
+- Requer Node.js 22.12 ou superior.
+- Copie `.env.example` para `.env` e preencha `DISCORD_TOKEN` com o token do bot criado no [Discord Developer Portal](https://discord.com/developers/applications).
+- `npm install`: instala dependências.
+- `npm run dev`: inicia em modo de desenvolvimento.
+- `npm run build`: compila o TypeScript para `dist/`.
+- `npm start`: inicia a versão compilada usando as variáveis de `.env`.
+
+Nunca compartilhe ou versione o arquivo `.env`.
 
 ## Próximo passo
 
