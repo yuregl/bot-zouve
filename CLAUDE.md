@@ -1,5 +1,5 @@
-# Instruções do Claude Code
+# Claude Code Instructions
 
-Leia e siga [`AGENTS.md`](./AGENTS.md) como fonte canônica das instruções do projeto.
+Read and follow [`AGENTS.md`](./AGENTS.md) as the canonical source of project instructions.
 
-Para mudanças de produto, consulte [`docs/SDD.md`](./docs/SDD.md) e a especificação correspondente em `docs/specs/`. Não duplique aqui regras que já estejam em `AGENTS.md`.
+For product changes, consult [`docs/SDD.md`](./docs/SDD.md) and the relevant specification in `docs/specs/`. Do not duplicate rules that are already in `AGENTS.md`.

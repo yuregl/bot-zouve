@@ -1,29 +1,31 @@
 # bot-zouve
 
-Bot de música para Discord. O projeto usa desenvolvimento orientado a especificações (SDD): requisitos e decisões devem ser registrados antes da implementação.
+A music bot for Discord. The project follows specification-driven development (SDD): requirements and decisions are recorded before implementation.
 
-## Documentação do projeto
+## Project documentation
 
-- [AGENTS.md](./AGENTS.md): instruções canônicas para agentes de desenvolvimento.
-- [CLAUDE.md](./CLAUDE.md): ponto de entrada do Claude Code; complementa `AGENTS.md`.
-- [SDD](./docs/SDD.md): fluxo, estrutura e critérios para especificações.
-- [Especificação inicial](./docs/specs/0001-discord-music-bot/spec.md): escopo proposto e decisões ainda pendentes.
+- [AGENTS.md](./AGENTS.md): canonical instructions for development agents.
+- [CLAUDE.md](./CLAUDE.md): Claude Code entry point; supplements `AGENTS.md`.
+- [SDD guide](./docs/SDD.md): workflow, structure, and specification criteria.
+- [Initial specification](./docs/specs/0001-discord-music-bot/spec.md): proposed scope and outstanding decisions.
 
-## Estado
+## Status
 
-TypeScript e `discord.js` foram escolhidos. O projeto tem uma base inicial executável; provedor de áudio e implantação ainda precisam ser decididos.
+TypeScript and `discord.js` have been selected. The `/help` command is available; music playback commands are still in development. The audio provider and deployment approach remain undecided.
 
-## Desenvolvimento
+## Development
 
-- Requer Node.js 22.12 ou superior.
-- Copie `.env.example` para `.env` e preencha `DISCORD_TOKEN` com o token do bot criado no [Discord Developer Portal](https://discord.com/developers/applications).
-- `npm install`: instala dependências.
-- `npm run dev`: inicia em modo de desenvolvimento.
-- `npm run build`: compila o TypeScript para `dist/`.
-- `npm start`: inicia a versão compilada usando as variáveis de `.env`.
+- Requires Node.js 22.12 or later.
+- Copy `.env.example` to `.env` and set `DISCORD_TOKEN` to the bot token created in the [Discord Developer Portal](https://discord.com/developers/applications).
+- `npm install`: install dependencies.
+- `npm run dev`: start in development mode.
+- `npm run build`: compile TypeScript to `dist/`.
+- `npm start`: start the compiled version using variables from `.env`.
 
-Nunca compartilhe ou versione o arquivo `.env`.
+Never share or commit the `.env` file.
 
-## Próximo passo
+The global `/help` command is registered when the bot starts. It may take a few minutes for the command to become available in Discord.
 
-Revisar e aprovar a especificação inicial e decidir os itens em aberto antes de criar o plano técnico e iniciar a implementação.
+## Next step
+
+Review and approve the initial specification, then resolve its outstanding decisions before creating the technical plan and starting implementation.

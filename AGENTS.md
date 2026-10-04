@@ -1,31 +1,31 @@
-# Instruções para agentes
+# Agent Instructions
 
-## Fonte de verdade
+## Source of truth
 
-- Leia este arquivo e a especificação relevante em `docs/specs/` antes de propor ou alterar comportamento.
-- `AGENTS.md` é a fonte canônica das instruções compartilhadas. Arquivos específicos de ferramentas devem apontar para cá e não duplicar regras.
-- Siga `docs/SDD.md`. Se uma solicitação alterar comportamento sem especificação aprovada, atualize a especificação e peça confirmação quando a mudança depender de uma decisão de produto.
-- Não trate decisões marcadas como pendentes como requisitos aprovados.
+- Read this file and the relevant specification in `docs/specs/` before proposing or changing behavior.
+- `AGENTS.md` is the canonical source for shared instructions. Tool-specific instruction files should point here instead of duplicating rules.
+- Follow `docs/SDD.md`. If a request changes behavior without an approved specification, update the specification and ask for confirmation when the change depends on a product decision.
+- Do not treat decisions marked as pending as approved requirements.
 
-## Regras do projeto
+## Project rules
 
-- A interface do bot é em português; mantenha nomes de comandos slash claros e consistentes.
-- Não escolha linguagem, biblioteca, provedor de áudio, armazenamento ou hospedagem sem registrar a decisão em uma especificação aprovada.
-- Nunca exponha tokens, segredos ou dados privados. Use variáveis de ambiente e mantenha exemplos sem valores reais.
-- Valide permissões do usuário, do bot e do canal de voz antes de iniciar ou controlar reprodução.
-- Informe erros de forma clara; não ignore falhas nem apresente sucesso quando uma operação falhar.
-- Preserve o escopo aprovado. Para mudanças de comportamento, atualize requisitos e critérios de aceite antes ou junto da implementação.
-- Prefira mudanças pequenas e tipadas, seguindo os padrões existentes. Não adicione dependências sem necessidade justificada.
+- The bot's user interface is in Portuguese; keep slash command names clear and consistent.
+- Do not choose a language, library, audio provider, storage solution, or hosting platform without recording the decision in an approved specification.
+- Never expose tokens, secrets, or private data. Use environment variables and keep example values free of real credentials.
+- Validate user, bot, and voice-channel permissions before starting or controlling playback.
+- Report errors clearly; do not ignore failures or report success when an operation fails.
+- Preserve the approved scope. For behavior changes, update requirements and acceptance criteria before or alongside implementation.
+- Prefer small, type-safe changes that follow existing patterns. Do not add dependencies without a justified need.
 
-## Implementação e validação
+## Implementation and validation
 
-- Para cada requisito implementado, adicione ou atualize testes relevantes.
-- Execute os testes, verificações estáticas e build aplicáveis ao projeto; relate comandos e resultados.
-- Mantenha a documentação de configuração e operação alinhada ao comportamento real.
-- Não implemente funcionalidades dependentes de um provedor de áudio até que o provedor e seus termos de uso tenham sido avaliados e aprovados.
+- Add or update relevant tests for each implemented requirement.
+- Run the applicable tests, static checks, and build; report the commands and results.
+- Keep setup and operations documentation aligned with actual behavior.
+- Do not implement features that depend on an audio provider until the provider and its terms of use have been evaluated and approved.
 
 ## Commits
 
-- Use Conventional Commits: `<tipo>(escopo opcional): descrição curta`, por exemplo `feat: add music queue`.
-- Use tipos padronizados como `feat`, `fix`, `docs`, `refactor`, `test`, `build` e `chore`.
-- Não adicione trailers `Co-authored-by` às mensagens de commit.
+- Use Conventional Commits: `<type>(optional scope): short description`, for example `feat: add music queue`.
+- Use standard types such as `feat`, `fix`, `docs`, `refactor`, `test`, `build`, and `chore`.
+- Do not add `Co-authored-by` trailers to commit messages.

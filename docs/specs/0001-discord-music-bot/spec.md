@@ -1,64 +1,66 @@
-# Bot de música para Discord
+# Discord Music Bot
 
-- **Status:** Rascunho
-- **Responsável pela aprovação:** Pendente
+- **Status:** Draft
+- **Approver:** Pending
 
-## Contexto e objetivo
+## Context and goal
 
-Criar um bot para servidores Discord que permita aos membros controlar música em um canal de voz por meio de comandos slash. Esta especificação define o conjunto inicial proposto; não autoriza ainda a escolha de tecnologia ou de fonte de áudio.
+Create a bot for Discord servers that lets members control music in a voice channel using slash commands. This specification defines the proposed initial scope; it does not yet authorize a choice of technology or audio source.
 
-## Usuários e pré-condições
+## Users and preconditions
 
-- O usuário está em um servidor onde o bot está instalado.
-- Para iniciar ou controlar uma reprodução, o usuário está conectado a um canal de voz acessível ao bot.
-- O bot possui as permissões necessárias para entrar no canal e responder aos comandos.
+- The user is in a server where the bot is installed.
+- To start or control playback, the user is connected to a voice channel the bot can access.
+- The bot has the permissions required to join the channel and respond to commands.
 
-## Requisitos funcionais
+## Functional requirements
 
-- **RF-001 — Tocar:** `/play <consulta>` adiciona uma faixa à fila e inicia a reprodução quando não houver outra faixa tocando.
-- **RF-002 — Pausar e retomar:** `/pause` pausa a reprodução atual e `/resume` retoma uma reprodução pausada.
-- **RF-003 — Pular:** `/skip` encerra a faixa atual e tenta iniciar a próxima faixa da fila.
-- **RF-004 — Encerrar:** `/stop` encerra a reprodução, limpa a fila e desconecta o bot do canal de voz.
-- **RF-005 — Consultar fila:** `/queue` apresenta as faixas aguardando reprodução em ordem.
-- **RF-006 — Faixa atual:** `/nowplaying` informa a faixa em reprodução ou informa que não há faixa ativa.
-- **RF-007 — Volume:** `/volume <valor>` ajusta o volume dentro do intervalo permitido, a ser definido no plano técnico.
-- **RF-008 — Repetição:** `/loop <modo>` permite desligar repetição ou repetir a faixa atual ou a fila; os modos exatos e sua semântica precisam ser confirmados.
-- **RF-009 — Permissões e estado:** comandos que dependem de reprodução ou canal de voz validam o estado atual e respondem com uma mensagem útil quando a ação não puder ser executada.
-- **RF-010 — Escopo da sessão:** a fila e os controles de reprodução pertencem ao servidor Discord que iniciou a sessão; uma ação em um servidor não afeta outro.
+- **FR-001 — Play:** `/play <query>` adds a track to the queue and starts playback if no other track is playing.
+- **FR-002 — Pause and resume:** `/pause` pauses the current playback and `/resume` resumes paused playback.
+- **FR-003 — Skip:** `/skip` ends the current track and attempts to start the next track in the queue.
+- **FR-004 — Stop:** `/stop` ends playback, clears the queue, and disconnects the bot from the voice channel.
+- **FR-005 — View queue:** `/queue` displays queued tracks in order.
+- **FR-006 — Current track:** `/nowplaying` reports the track currently playing or that no track is active.
+- **FR-007 — Volume:** `/volume <value>` adjusts the volume within a range to be defined in the technical plan.
+- **FR-008 — Repeat:** `/loop <mode>` can disable repeat or repeat the current track or the queue; exact modes and semantics need confirmation.
+- **FR-009 — Permissions and state:** commands that depend on playback or a voice channel validate the current state and return a useful message when an action cannot be performed.
+- **FR-010 — Session scope:** the queue and playback controls belong to the Discord server that started the session; an action in one server does not affect another.
+- **FR-011 — Help:** `/help` lists the bot's commands and descriptions, distinguishing available commands from those still in development.
 
-## Requisitos não funcionais
+## Non-functional requirements
 
-- **RNF-001:** respostas de comandos devem ser claras e adequadas à interface do Discord.
-- **RNF-002:** erros do provedor de áudio e do Discord devem ser reportados sem indicar sucesso falso.
-- **RNF-003:** tokens e segredos não podem ser registrados em código, mensagens ao usuário ou logs.
-- **RNF-004:** a fonte de áudio deve ser definida e avaliada quanto a disponibilidade, compatibilidade e termos de uso antes da implementação da reprodução.
+- **NFR-001:** command responses must be clear and appropriate for Discord's interface.
+- **NFR-002:** errors from the audio provider and Discord must be reported without implying false success.
+- **NFR-003:** tokens and secrets must not be written to code, user-facing messages, or logs.
+- **NFR-004:** the audio source must be selected and evaluated for availability, compatibility, and terms of use before playback is implemented.
 
-## Critérios de aceite
+## Acceptance criteria
 
-- **CA-001:** `/play` em um servidor sem reprodução ativa inicia a primeira faixa aceita pelo provedor aprovado.
-- **CA-002:** `/play` durante uma reprodução adiciona a nova faixa à fila sem interromper a atual.
-- **CA-003:** pausar e retomar afetam a reprodução ativa, e uma solicitação inválida recebe uma resposta explicativa.
-- **CA-004:** pular inicia a próxima faixa quando houver uma; encerrar limpa a fila e desconecta o bot.
-- **CA-005:** fila e controles de servidores diferentes permanecem isolados.
-- **CA-006:** chamadas de comandos por usuários sem as pré-condições necessárias não provocam falhas silenciosas nem ações em canais indevidos.
-- **CA-007:** os modos de repetição e limites de volume seguem as decisões aprovadas antes da implementação.
+- **AC-001:** `/play` in a server with no active playback starts the first track accepted by the approved provider.
+- **AC-002:** `/play` during playback adds the new track to the queue without interrupting the current track.
+- **AC-003:** pause and resume affect active playback, and invalid requests receive an explanatory response.
+- **AC-004:** skip starts the next track when one is queued; stop clears the queue and disconnects the bot.
+- **AC-005:** queues and controls in different servers remain isolated.
+- **AC-006:** commands invoked without required preconditions do not fail silently or perform actions in unintended channels.
+- **AC-007:** repeat modes and volume limits follow the decisions approved before implementation.
+- **AC-008:** `/help` responds with a list of planned commands and clearly indicates which are not yet available.
 
-## Fora de escopo
+## Out of scope
 
-- Reprodução de áudio ou configuração de infraestrutura antes da escolha do provedor e da tecnologia.
-- Comandos administrativos, playlists persistentes, busca avançada, recomendações, painel web e monetização.
-- Reprodução simultânea em múltiplos canais do mesmo servidor.
+- Audio playback or infrastructure setup before the provider and technology have been selected.
+- Administrative commands, persistent playlists, advanced search, recommendations, a web dashboard, and monetization.
+- Simultaneous playback in multiple channels of the same server.
 
-## Decisões confirmadas
+## Confirmed decisions
 
-- **Linguagem:** TypeScript.
-- **Biblioteca Discord:** `discord.js`, biblioteca comunitária para a API do Discord; não existe um SDK oficial geral da Discord para bots TypeScript.
-- **Runtime mínimo inicial:** Node.js 22.12, compatível com a configuração inicial e a versão atual da biblioteca escolhida.
+- **Language:** TypeScript.
+- **Discord library:** `discord.js`, a community-maintained library for the Discord API; Discord does not provide a general official SDK for TypeScript bots.
+- **Initial minimum runtime:** Node.js 22.12, compatible with the initial setup and the selected library version.
 
-## Decisões pendentes
+## Open decisions
 
-- Provedor(es) e formatos de entrada de áudio, incluindo avaliação de termos de uso e restrições aplicáveis.
-- Política de acesso aos comandos: qualquer membro ou apenas funções/permissões específicas.
-- Semântica e limites de `/loop` e `/volume`; tamanho máximo da fila e comportamento quando ela termina.
-- Hospedagem, persistência necessária e estratégia para reconexão/recuperação após falhas.
-- Nome final, idioma das respostas e tratamento de interações simultâneas no servidor.
+- Audio provider(s) and input formats, including an evaluation of applicable terms of use and restrictions.
+- Command access policy: any member or only users with specific roles/permissions.
+- `/loop` and `/volume` semantics and limits; maximum queue size and behavior when the queue ends.
+- Hosting, persistence needs, and recovery strategy after failures.
+- Final name, response language, and handling of concurrent interactions in a server.

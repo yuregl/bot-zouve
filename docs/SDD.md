@@ -1,21 +1,21 @@
-# Desenvolvimento orientado a especificações (SDD)
+# Specification-Driven Development (SDD)
 
-Este projeto registra o comportamento esperado antes de planejar e implementar funcionalidades. A especificação é a referência para produto; o plano descreve a solução técnica; as tarefas dividem o trabalho verificável.
+This project records expected behavior before planning and implementing features. The specification is the product reference; the plan describes the technical solution; tasks break the work into verifiable steps.
 
-## Fluxo
+## Workflow
 
-1. **Entender:** identifique o pedido, o escopo, os usuários afetados e as decisões ainda não tomadas.
-2. **Especificar:** crie ou atualize `docs/specs/<id>-<slug>/spec.md`. Descreva comportamento observável, requisitos e critérios de aceite sem impor detalhes técnicos prematuros.
-3. **Revisar:** deixe explícitas as dúvidas e alternativas relevantes. Não assuma decisões que alterem escopo, custo, privacidade ou experiência do usuário.
-4. **Aprovar:** marque a especificação como `Aprovada` somente após as decisões necessárias serem confirmadas.
-5. **Planejar:** para uma especificação aprovada, registre arquitetura, interfaces, dados, riscos e validação em `plan.md`.
-6. **Dividir:** crie `tasks.md` com tarefas pequenas, rastreáveis aos requisitos e com critérios de conclusão.
-7. **Implementar e validar:** execute as tarefas, adicione testes e rode as verificações adequadas ao projeto.
-8. **Concluir:** atualize a documentação afetada e marque a especificação como `Concluída` quando todos os critérios de aceite estiverem atendidos.
+1. **Understand:** identify the request, scope, affected users, and unresolved decisions.
+2. **Specify:** create or update `docs/specs/<id>-<slug>/spec.md`. Describe observable behavior, requirements, and acceptance criteria without prematurely prescribing technical details.
+3. **Review:** make questions and relevant alternatives explicit. Do not assume decisions that affect scope, cost, privacy, or user experience.
+4. **Approve:** mark the specification as `Approved` only after the necessary decisions have been confirmed.
+5. **Plan:** for an approved specification, document architecture, interfaces, data, risks, and validation in `plan.md`.
+6. **Break down:** create `tasks.md` with small tasks traceable to requirements and clear completion criteria.
+7. **Implement and validate:** complete the tasks, add tests, and run the checks appropriate to the project.
+8. **Complete:** update affected documentation and mark the specification as `Completed` once all acceptance criteria are met.
 
-Não crie planos ou tarefas como se uma especificação em rascunho já estivesse aprovada. Se a implementação revelar uma mudança de comportamento necessária, atualize a especificação e obtenha aprovação antes de ampliar o escopo.
+Do not create plans or tasks as if a draft specification were already approved. If implementation reveals a necessary behavior change, update the specification and get approval before expanding the scope.
 
-## Estrutura
+## Structure
 
 ```text
 docs/
@@ -23,29 +23,29 @@ docs/
   specs/
     0001-discord-music-bot/
       spec.md
-      plan.md      # após aprovação
-      tasks.md     # após aprovação do plano
+      plan.md      # after approval
+      tasks.md     # after plan approval
 ```
 
-Use identificadores numéricos sequenciais (`0002`, `0003`...) e slugs curtos em kebab-case para novas funcionalidades. Mudanças pequenas que já estejam cobertas por uma especificação podem atualizar essa especificação; funcionalidades independentes recebem uma nova pasta.
+Use sequential numeric identifiers (`0002`, `0003`...) and short kebab-case slugs for new features. Small changes already covered by a specification may update it; independent features should get a new directory.
 
-## Conteúdo de uma especificação
+## Specification contents
 
-Use este roteiro em `spec.md`:
+Use this outline in `spec.md`:
 
 ```markdown
-# <Nome da funcionalidade>
+# <Feature name>
 
-- **Status:** Rascunho | Aprovada | Em implementação | Concluída
-- **Responsável pela aprovação:** <pessoa ou equipe>
+- **Status:** Draft | Approved | In Progress | Completed
+- **Approver:** <person or team>
 
-## Contexto e objetivo
-## Usuários e pré-condições
-## Requisitos funcionais
-## Requisitos não funcionais
-## Critérios de aceite
-## Fora de escopo
-## Decisões pendentes
+## Context and goal
+## Users and preconditions
+## Functional requirements
+## Non-functional requirements
+## Acceptance criteria
+## Out of scope
+## Open decisions
 ```
 
-Requisitos devem ser numerados (`RF-001`, `RNF-001`) para permitir rastreabilidade. Critérios de aceite devem ser verificáveis, preferencialmente descritos como cenário, ação e resultado esperado. Registre decisões aprovadas e altere o status correspondente; não apague o histórico de decisões relevantes.
+Number requirements (`FR-001`, `NFR-001`) to enable traceability. Acceptance criteria must be verifiable and should preferably describe a scenario, action, and expected result. Record approved decisions and update the status accordingly; do not erase relevant decision history.
