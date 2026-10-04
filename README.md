@@ -22,6 +22,7 @@ TypeScript, `discord.js`, and `@discordjs/voice` have been selected. `/help`, `/
 - `npm run build`: compile TypeScript to `dist/`.
 - `npm run lint`: lint the code with Oxlint (`.oxlintrc.json`).
 - `npm test`: run the unit tests.
+- `npm run test:coverage`: run the unit tests with a coverage report.
 - `npm start`: start the compiled version using variables from `.env`.
 
 Never share or commit the `.env` file.
@@ -29,6 +30,10 @@ Never share or commit the `.env` file.
 The global `/help`, `/setup`, `/play`, `/p`, and `/pause` commands are registered when the bot starts. They may take a few minutes to become available in Discord.
 
 After inviting the bot, an admin runs `/setup` to create the `#zouve-music` channel; music commands only work there. Renaming that channel breaks the link, since the bot finds it by name.
+
+## Continuous integration
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `main`: type check, lint, build, tests on Node.js 22 and 24, coverage, commit message linting (Conventional Commits, `commitlint.config.mjs`), and secret scanning with Gitleaks.
 
 ## Logs
 
