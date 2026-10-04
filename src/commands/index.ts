@@ -1,20 +1,37 @@
-import { Collection, Events, type Client } from "discord.js";
+import {
+  type Client,
+  Collection,
+  Events,
+  type InteractionReplyOptions,
+  MessageFlags,
+} from "discord.js";
 import type { BotCommand } from "./command.js";
+import type { MusicManager } from "../music/music-manager.js";
 import { helpCommand } from "./help.js";
+import { pauseCommand } from "./pause.js";
+import { playAliasCommand, playCommand } from "./play.js";
+import { setupCommand } from "./setup.js";
+import { createLogger } from "../logger.js";
+
+const logger = createLogger("commands");
 
 const commands = new Collection<string, BotCommand>([
   [helpCommand.data.name, helpCommand],
+  [pauseCommand.data.name, pauseCommand],
+  [playCommand.data.name, playCommand],
+  [playAliasCommand.data.name, playAliasCommand],
+  [setupCommand.data.name, setupCommand],
 ]);
 
-export function registerCommands(client: Client): void {
+export function registerCommands(client: Client, musicManager: MusicManager): void {
   client.once(Events.ClientReady, async (readyClient) => {
     try {
       await readyClient.application.commands.set(
         commands.map((command) => command.data.toJSON()),
       );
-      console.info(`Comandos registrados: ${commands.map((command) => `/${command.data.name}`).join(", ")}`);
+      logger.info("Registered commands", { commands: commands.map((command) => `/${command.data.name}`) });
     } catch (error) {
-      console.error("Falha ao registrar os comandos slash:", error);
+      logger.error("Failed to register slash commands", undefined, error);
     }
   });
 
@@ -28,20 +45,33 @@ export function registerCommands(client: Client): void {
       return;
     }
 
-    try {
-      await command.execute(interaction);
-    } catch (error) {
-      console.error(`Falha ao executar /${interaction.commandName}:`, error);
+    const context = {
+      command: `/${interaction.commandName}`,
+      options: Object.fromEntries(interaction.options.data.map((option) => [option.name, option.value])),
+      user: interaction.user.tag,
+      guild: interaction.guild?.name ?? "DM",
+      channel: interaction.channel && "name" in interaction.channel ? interaction.channel.name : interaction.channelId,
+    };
+    logger.info("Command received", context);
 
-      const response = {
-        content: "Não foi possível executar esse comando. Tente novamente.",
-        ephemeral: true,
+    try {
+      await command.execute(interaction, musicManager);
+    } catch (error) {
+      logger.error("Command failed", context, error);
+
+      const response: InteractionReplyOptions = {
+        content: "This command could not be run. Please try again.",
+        flags: MessageFlags.Ephemeral,
       };
 
-      if (interaction.replied || interaction.deferred) {
-        await interaction.followUp(response);
-      } else {
-        await interaction.reply(response);
+      try {
+        if (interaction.replied || interaction.deferred) {
+          await interaction.followUp(response);
+        } else {
+          await interaction.reply(response);
+        }
+      } catch (replyError) {
+        logger.error("Could not send the failure reply", context, replyError);
       }
     }
   });

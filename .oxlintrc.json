@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import", "node"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "no-console": "error",
+    "eqeqeq": "error",
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-explicit-any": "error"
+  },
+  "overrides": [
+    {
+      "files": ["src/logger.ts"],
+      "rules": { "no-console": "off" }
+    }
+  ],
+  "ignorePatterns": ["dist/**", "logs/**"]
+}

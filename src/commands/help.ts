@@ -15,13 +15,15 @@ export const helpCommand: BotCommand = {
       .setDescription(
         [
           "Hello! Here are the planned commands for controlling music on this server.",
+          "Music commands only work in the #zouve-music channel.",
           "",
           "**Available now**",
           "`/help` — shows this help message.",
+          "`/setup` — creates the #zouve-music channel (requires Manage Channels).",
+          "`/p <query>` or `/play <query>` — plays a YouTube video link or adds it to the queue.",
+          "`/pause` — pauses the current track when playback is active.",
           "",
           "**In development — not available yet**",
-          "`/play <query>` — searches for and plays a track or adds it to the queue.",
-          "`/pause` — pauses the current track.",
           "`/resume` — resumes the paused track.",
           "`/skip` — skips to the next track in the queue.",
           "`/stop` — stops playback and clears the queue.",
@@ -31,7 +33,7 @@ export const helpCommand: BotCommand = {
           "`/loop <mode>` — controls repeat for the current track or the queue.",
         ].join("\n"),
       )
-      .setFooter({ text: "Music commands will be available in future updates." });
+      .setFooter({ text: "Only YouTube links are supported for now; search by name is not available yet." });
 
     await interaction.reply({ embeds: [helpMessage] });
   },
