@@ -20,12 +20,12 @@ Create a bot for Discord servers that lets members control music in a voice chan
 - **FR-003 — Skip:** `/skip` ends the current track (also when paused) and attempts to start the next track in the queue, replying with the skipped track and the next one, or that the queue is now empty. It only works in `#zouve-music` and when the user is in the same voice channel as the bot; when nothing is playing, it replies privately.
 - **FR-004 — Stop:** `/stop` ends the current track and clears the queue; the bot stays in the voice channel (use `/leave` to disconnect). It only works in `#zouve-music` and when the user is in the same voice channel as the bot; when nothing is playing or queued, it replies privately. Decided by the project owner on 2026-10-04, replacing the earlier draft in which `/stop` also disconnected.
 - **FR-005 — View queue:** `/queue` displays the current track (marked when paused) and the next 10 queued tracks in order, each with its duration and who requested it, followed by how many more tracks are queued and the total number of tracks and duration. Any member can use it in `#zouve-music` without being in a voice channel, and the reply is visible to everyone in the channel; when nothing is playing or queued, it replies privately. Decided by the project owner on 2026-10-04.
-- **FR-006 — Current track:** `/nowplaying` reports the track currently playing or that no track is active.
-- **FR-007 — Volume:** `/volume <value>` adjusts the volume within a range to be defined in the technical plan.
-- **FR-008 — Repeat:** `/loop <mode>` can disable repeat or repeat the current track or the queue; exact modes and semantics need confirmation.
+- **FR-006 — Current track:** removed from scope by the project owner on 2026-10-05; `/queue` already shows the current track, and the bot announces each track when it starts.
+- **FR-007 — Volume:** removed from scope by the project owner on 2026-10-05. Changing the volume would require decoding and re-encoding the audio, which the Opus passthrough avoids; listeners can adjust the bot's volume in their own Discord client.
+- **FR-008 — Repeat:** removed from scope by the project owner on 2026-10-05.
 - **FR-009 — Permissions and state:** commands that depend on playback or a voice channel validate the current state and return a useful message when an action cannot be performed.
 - **FR-010 — Session scope:** the queue and playback controls belong to the Discord server that started the session; an action in one server does not affect another.
-- **FR-011 — Help:** `/help` lists the bot's commands and descriptions, distinguishing available commands from those still in development.
+- **FR-011 — Help:** `/help` lists the bot's commands and descriptions; commands still in development, if any, are listed separately as not yet available.
 - **FR-012 — Music channel:** `/setup`, available to members with Manage Channels, creates a `#zouve-music` text channel if it does not exist (the bot needs Manage Channels to do so). The bot finds the channel by name, so no storage is needed. Music commands (`/play`, `/p`, `/pause`, `/resume`, `/skip`, `/stop`, `/leave`, `/queue`, and future playback commands) only work in that channel; elsewhere, or when it does not exist, they reply privately with a link to the channel or instructions to run `/setup`. The bot posts in the channel when a track is added to the queue, when a track starts playing (title, duration, link, and who requested it), and when a track fails and is skipped.
 - **FR-013 — Leave:** `/leave` disconnects the bot from the server's voice channel, ending playback and discarding the queue. It only works in `#zouve-music`, while the bot is connected, and when the user is in the same voice channel as the bot; otherwise it replies privately with the reason. `/stop` (FR-004) ends playback without disconnecting.
 
@@ -44,8 +44,8 @@ Create a bot for Discord servers that lets members control music in a voice chan
 - **AC-004:** skip starts the next track when one is queued; stop ends the current track and clears the queue while the bot stays in the voice channel.
 - **AC-005:** queues and controls in different servers remain isolated.
 - **AC-006:** commands invoked without required preconditions do not fail silently or perform actions in unintended channels.
-- **AC-007:** repeat modes and volume limits follow the decisions approved before implementation.
-- **AC-008:** `/help` responds with a list of planned commands and clearly indicates which are not yet available.
+- **AC-007:** removed along with FR-007 and FR-008.
+- **AC-008:** `/help` responds with the list of commands and clearly indicates any that are not yet available.
 - **AC-009:** `/p` and `/play` invoke the same playback behavior when an authorized audio source has been configured.
 - **AC-010:** `/setup` creates `#zouve-music` once and reports the existing channel on later runs; music commands used outside it are refused with a private message pointing to it.
 - **AC-011:** `/leave` from the bot's voice channel disconnects the bot and clears the queue; it is refused privately when the bot is not connected or the user is not in the same voice channel.
@@ -57,6 +57,7 @@ Create a bot for Discord servers that lets members control music in a voice chan
 - Audio playback or infrastructure setup before the provider and technology have been selected.
 - Administrative commands, persistent playlists, advanced search, recommendations, a web dashboard, and monetization.
 - Simultaneous playback in multiple channels of the same server.
+- A separate current-track command (`/nowplaying`), volume control (`/volume`), and repeat modes (`/loop`); see FR-006, FR-007, and FR-008.
 
 ## Confirmed decisions
 
@@ -72,7 +73,7 @@ Create a bot for Discord servers that lets members control music in a voice chan
 
 - Audio provider(s) and input formats, including an evaluation of applicable terms of use and restrictions.
 - Command access policy: any member or only users with specific roles/permissions.
-- `/loop` and `/volume` semantics and limits; maximum queue size and behavior when the queue ends.
+- Maximum queue size and behavior when the queue ends.
 - Hosting, persistence needs, and recovery strategy after failures.
 - Final name, response language, and handling of concurrent interactions in a server.
 - Whether the bot disconnects automatically when the queue ends (it currently stays connected).
