@@ -1,6 +1,7 @@
 import { Readable } from "node:stream";
 import { youtubeDl } from "youtube-dl-exec";
 import type { AudioSource, Track } from "../music/track.js";
+import { type LinkResolver, type TrackResolver, UnsupportedTrackError } from "../music/track-resolver.js";
 import { createLogger } from "./logger.js";
 
 const logger = createLogger("youtube");
@@ -28,8 +29,6 @@ const baseFlags = {
   // yt-dlp needs a JavaScript runtime to extract YouTube formats; reuse the bot's Node.js.
   jsRuntimes: `node:${process.execPath}`,
 } as const;
-
-export class UnsupportedTrackError extends Error {}
 
 export function getYouTubeVideoId(query: string): string | undefined {
   let url: URL;
@@ -71,65 +70,9 @@ async function fetchVideoInfo(url: string) {
   return info;
 }
 
-export type TrackQuery =
-  | { kind: "video"; videoId: string }
-  | { kind: "search"; terms: string }
-  | { kind: "invalid"; reason: string };
+type VideoInfo = Awaited<ReturnType<typeof fetchVideoInfo>>;
 
-/** Decides whether /play received a YouTube video link, search terms, or an unsupported link. */
-export function classifyQuery(query: string): TrackQuery {
-  const trimmed = query.trim();
-
-  if (!trimmed) {
-    return { kind: "invalid", reason: "Send a YouTube link or the name of a song." };
-  }
-
-  const videoId = getYouTubeVideoId(trimmed);
-  if (videoId) {
-    return { kind: "video", videoId };
-  }
-
-  if (/^https?:\/\//i.test(trimmed)) {
-    return { kind: "invalid", reason: "Only links to a single YouTube video are supported." };
-  }
-
-  return { kind: "search", terms: trimmed };
-}
-
-/** Resolves a YouTube video link, or the first YouTube search result for other terms. */
-export async function resolveYouTubeTrack(query: string, requestedBy: string): Promise<Track> {
-  const request = classifyQuery(query);
-
-  if (request.kind === "invalid") {
-    throw new UnsupportedTrackError(request.reason);
-  }
-
-  let info;
-  if (request.kind === "video") {
-    logger.debug("Fetching video info", { videoId: request.videoId });
-    info = await fetchVideoInfo(watchUrl(request.videoId));
-  } else {
-    logger.debug("Searching YouTube", { terms: request.terms });
-    const results = await fetchVideoInfo(`ytsearch1:${request.terms}`);
-    info = (results as { entries?: (typeof results)[] }).entries?.[0];
-
-    if (!info) {
-      throw new UnsupportedTrackError(`No YouTube results for "${request.terms}".`);
-    }
-  }
-
-  const videoId = request.kind === "video" ? request.videoId : info.id;
-
-  if (typeof videoId !== "string" || !VIDEO_ID_PATTERN.test(videoId)) {
-    throw new Error("yt-dlp returned a video without a valid id.");
-  }
-
-  if (info.is_live) {
-    throw new UnsupportedTrackError(
-      request.kind === "video" ? "Live streams are not supported." : `The first result for "${request.terms}" is a live stream, which is not supported.`,
-    );
-  }
-
+function toTrack(info: VideoInfo, videoId: string, requestedBy: string): Track {
   return {
     title: info.title,
     url: watchUrl(videoId),
@@ -138,6 +81,63 @@ export async function resolveYouTubeTrack(query: string, requestedBy: string): P
     audio: getAudioSource(info),
   };
 }
+
+/** Resolves a YouTube video by its id. */
+export async function resolveYouTubeVideo(videoId: string, requestedBy: string): Promise<Track> {
+  logger.debug("Fetching video info", { videoId });
+  const info = await fetchVideoInfo(watchUrl(videoId));
+
+  if (info.is_live) {
+    throw new UnsupportedTrackError("Live streams are not supported.");
+  }
+
+  return toTrack(info, videoId, requestedBy);
+}
+
+/** Resolves the first YouTube search result for the given terms. */
+export async function searchYouTube(terms: string, requestedBy: string): Promise<Track> {
+  logger.debug("Searching YouTube", { terms });
+  const results = await fetchVideoInfo(`ytsearch1:${terms}`);
+  const info = (results as { entries?: VideoInfo[] }).entries?.[0];
+
+  if (!info) {
+    throw new UnsupportedTrackError(`No YouTube results for "${terms}".`);
+  }
+
+  if (typeof info.id !== "string" || !VIDEO_ID_PATTERN.test(info.id)) {
+    throw new Error("yt-dlp returned a video without a valid id.");
+  }
+
+  if (info.is_live) {
+    throw new UnsupportedTrackError(`The first result for "${terms}" is a live stream, which is not supported.`);
+  }
+
+  return toTrack(info, info.id, requestedBy);
+}
+
+/** Plays a link to a single YouTube video. */
+export const youtubeLinkResolver: LinkResolver = {
+  linkDescription: "a single YouTube video",
+  failureMessage: "Could not load this video. Check that the link is public and available.",
+  canResolve: (url) => isYouTubeUrl(url.href),
+  async resolve(query, requestedBy) {
+    const videoId = getYouTubeVideoId(query);
+
+    if (!videoId) {
+      throw new UnsupportedTrackError("Send a valid YouTube video link.");
+    }
+
+    return [await resolveYouTubeVideo(videoId, requestedBy)];
+  },
+};
+
+/** Plays the first YouTube result for any text that is not a link; the default for /play. */
+export const youtubeSearchResolver: TrackResolver = {
+  failureMessage: "Could not search YouTube right now. Try again.",
+  async resolve(query, requestedBy) {
+    return [await searchYouTube(query, requestedBy)];
+  },
+};
 
 /**
  * Resolves a new direct audio link for a queued track whose link is missing or about to
