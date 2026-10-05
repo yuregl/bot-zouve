@@ -17,6 +17,13 @@
 - Preserve the approved scope. For behavior changes, update requirements and acceptance criteria before or alongside implementation.
 - Prefer small, type-safe changes that follow existing patterns. Do not add dependencies without a justified need.
 
+## Code structure
+
+- `src/commands/`: slash commands; validate the request and reply to the user.
+- `src/music/`: music behavior, such as tracks, the queue, and playback sessions.
+- `src/infra/`: technical details and adapters to external services, such as logging and YouTube (`yt-dlp`). Put new adapters here.
+- `src/index.ts`: entry point that wires the bot together.
+
 ## Implementation and validation
 
 - Add or update relevant tests for each implemented requirement.

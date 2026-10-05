@@ -7,11 +7,11 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import type { BotCommand } from "./command.js";
-import { createLogger } from "../logger.js";
+import { createLogger } from "../infra/logger.js";
 import type { MusicManager } from "../music/music-manager.js";
 import { formatDuration } from "../music/track.js";
 import { requireMusicChannel } from "./require-music-channel.js";
-import { isYouTubeUrl, resolveYouTubeTrack, UnsupportedTrackError } from "../music/youtube.js";
+import { isYouTubeUrl, resolveYouTubeTrack, UnsupportedTrackError } from "../infra/youtube.js";
 
 const logger = createLogger("play");
 

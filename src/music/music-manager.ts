@@ -12,8 +12,8 @@ import {
 } from "@discordjs/voice";
 import { EmbedBuilder, type MessageCreateOptions, type VoiceBasedChannel } from "discord.js";
 import { formatDuration, type Track } from "./track.js";
-import { createYouTubeStream, needsFreshAudio, refreshAudioSource } from "./youtube.js";
-import { createLogger } from "../logger.js";
+import { createYouTubeStream, needsFreshAudio, refreshAudioSource } from "../infra/youtube.js";
+import { createLogger } from "../infra/logger.js";
 
 const logger = createLogger("music");
 

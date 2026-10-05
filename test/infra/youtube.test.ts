@@ -10,7 +10,7 @@ import {
   needsFreshAudio,
   parseContentRangeSize,
   streamFirstWorkingAttempt,
-} from "../../src/music/youtube.js";
+} from "../../src/infra/youtube.js";
 
 const TRACK: Track = { title: "A", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", durationSeconds: 60, requestedBy: "u" };
 

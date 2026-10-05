@@ -1,7 +1,7 @@
 import { Readable } from "node:stream";
 import { youtubeDl } from "youtube-dl-exec";
-import type { AudioSource, Track } from "./track.js";
-import { createLogger } from "../logger.js";
+import type { AudioSource, Track } from "../music/track.js";
+import { createLogger } from "./logger.js";
 
 const logger = createLogger("youtube");
 

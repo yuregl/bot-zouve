@@ -1,6 +1,6 @@
 import { Client, Events, GatewayIntentBits } from "discord.js";
 import { registerCommands } from "./commands/index.js";
-import { createLogger } from "./logger.js";
+import { createLogger } from "./infra/logger.js";
 import { MusicManager } from "./music/music-manager.js";
 
 const logger = createLogger("bot");
