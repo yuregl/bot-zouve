@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { formatError, formatLogLine } from "./logger.js";
+import { formatError, formatLogLine } from "../src/logger.js";
 
 const date = new Date("2026-10-04T17:00:00.000Z");
 

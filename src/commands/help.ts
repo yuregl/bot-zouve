@@ -22,6 +22,7 @@ export const helpCommand: BotCommand = {
           "`/setup` — creates the #zouve-music channel (requires Manage Channels).",
           "`/p <query>` or `/play <query>` — plays a YouTube video link or adds it to the queue.",
           "`/pause` — pauses the current track when playback is active.",
+          "`/leave` — disconnects the bot from the voice channel and clears the queue.",
           "",
           "**In development — not available yet**",
           "`/resume` — resumes the paused track.",

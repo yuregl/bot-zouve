@@ -8,12 +8,12 @@
   },
   "scripts": {
     "dev": "node --env-file=.env --import tsx --watch src/index.ts",
-    "build": "tsc -p tsconfig.json",
-    "check": "tsc --noEmit -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json",
     "lint": "oxlint --deny-warnings",
     "start": "node --env-file=.env dist/index.js",
-    "test": "node --import tsx --test \"src/**/*.test.ts\"",
-    "test:coverage": "node --import tsx --test --experimental-test-coverage \"src/**/*.test.ts\""
+    "test": "node --import tsx --test \"test/**/*.test.ts\"",
+    "test:coverage": "node --import tsx --test --experimental-test-coverage --test-coverage-exclude=\"test/**\" \"test/**/*.test.ts\""
   },
   "dependencies": {
     "@discordjs/voice": "^0.19.2",

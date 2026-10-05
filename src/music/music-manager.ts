@@ -40,6 +40,22 @@ export class MusicManager {
     return this.sessions.get(guildId)?.player;
   }
 
+  getVoiceChannelId(guildId: string): string | undefined {
+    return this.sessions.get(guildId)?.connection.joinConfig.channelId ?? undefined;
+  }
+
+  /** Disconnects from the guild's voice channel, ending playback and discarding the queue. */
+  leave(guildId: string): boolean {
+    const session = this.sessions.get(guildId);
+
+    if (!session) {
+      return false;
+    }
+
+    session.connection.destroy();
+    return true;
+  }
+
   async enqueue(channel: VoiceBasedChannel, track: Track, notify: Notify): Promise<EnqueueResult> {
     const session = await this.getOrCreateSession(channel, notify);
     session.notify = notify;
@@ -150,8 +166,10 @@ export class MusicManager {
 
     connection.on(VoiceConnectionStatus.Destroyed, () => {
       logger.info("Voice session closed", context);
-      player.stop(true);
+      // Remove the session before stopping so the Idle handler does not start the next track.
       this.sessions.delete(guildId);
+      session.queue.length = 0;
+      player.stop(true);
     });
 
     return session;

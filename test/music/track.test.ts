@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { formatDuration } from "./track.js";
+import { formatDuration } from "../../src/music/track.js";
 
 test("formatDuration formats minutes and seconds", () => {
   assert.equal(formatDuration(5), "0:05");
