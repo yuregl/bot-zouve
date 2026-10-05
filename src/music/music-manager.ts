@@ -8,10 +8,12 @@ import {
   entersState,
   joinVoiceChannel,
   type AudioPlayer,
+  type AudioResource,
   type VoiceConnection,
 } from "@discordjs/voice";
 import { EmbedBuilder, type MessageCreateOptions, type VoiceBasedChannel } from "discord.js";
 import { formatDuration, type Track } from "./track.js";
+import { createSeekedOpusStream } from "../infra/opus.js";
 import { createYouTubeStream, needsFreshAudio, refreshAudioSource } from "../infra/youtube.js";
 import { createLogger } from "../infra/logger.js";
 
@@ -24,14 +26,25 @@ interface GuildSession {
   player: AudioPlayer;
   queue: Track[];
   current?: Track;
+  /** Where the current track's audio started, in seconds; set by seeking. */
+  startOffsetSeconds: number;
+  /** True while a seek restarts the current track, so it is not announced again. */
+  seeking: boolean;
   notify: Notify;
 }
 
 export interface QueueSnapshot {
   current?: Track;
+  /** How far into the current track playback is, in seconds; undefined when nothing is playing. */
+  elapsedSeconds?: number;
   paused: boolean;
   upcoming: Track[];
 }
+
+export type SeekOutcome =
+  | { status: "seeked"; track: Track }
+  | { status: "not-playing" }
+  | { status: "out-of-range"; track: Track };
 
 export interface SkipResult {
   skipped: Track;
@@ -63,11 +76,40 @@ export class MusicManager {
       return undefined;
     }
 
+    const state = session.player.state;
+    const playedMs = state.status === AudioPlayerStatus.Idle ? 0 : state.resource.playbackDuration;
+
     return {
       current: session.current,
-      paused: session.player.state.status === AudioPlayerStatus.Paused,
+      elapsedSeconds: session.current ? session.startOffsetSeconds + playedMs / 1000 : undefined,
+      paused: state.status === AudioPlayerStatus.Paused,
       upcoming: [...session.queue],
     };
+  }
+
+  /**
+   * Restarts the current track at the given position, resuming it if it was paused.
+   * Positions past the end of a track with a known duration are refused.
+   */
+  seek(guildId: string, positionSeconds: number): SeekOutcome {
+    const session = this.sessions.get(guildId);
+    const track = session?.current;
+
+    if (!session || !track) {
+      return { status: "not-playing" };
+    }
+
+    if (track.durationSeconds > 0 && positionSeconds >= track.durationSeconds) {
+      return { status: "out-of-range", track };
+    }
+
+    session.startOffsetSeconds = positionSeconds;
+    session.seeking = true;
+    // Replacing the resource destroys the old stream without emitting Idle, so the queue
+    // does not advance.
+    session.player.play(createTrackResource(track, positionSeconds));
+    logger.info("Seeked", { guild: guildId, track: track.title, positionSeconds });
+    return { status: "seeked", track };
   }
 
   /** Resumes a paused track; returns false when nothing is paused or the player refuses. */
@@ -185,7 +227,7 @@ export class MusicManager {
     });
     connection.subscribe(player);
 
-    const session: GuildSession = { connection, player, queue: [], notify };
+    const session: GuildSession = { connection, player, queue: [], startOffsetSeconds: 0, seeking: false, notify };
     this.sessions.set(guildId, session);
 
     player.on("stateChange", (oldState, newState) => {
@@ -203,6 +245,10 @@ export class MusicManager {
     });
 
     player.on(AudioPlayerStatus.Playing, (oldState) => {
+      if (session.seeking) {
+        session.seeking = false;
+        return;
+      }
       // Only announce new tracks, not resumes from a pause.
       if (oldState.status === AudioPlayerStatus.Buffering && session.current) {
         logger.info("Track started", { ...context, track: session.current.title, url: session.current.url });
@@ -252,10 +298,10 @@ export class MusicManager {
     }
 
     try {
-      const resource = createAudioResource(createYouTubeStream(next), {
-        inputType: StreamType.WebmOpus,
-      });
+      const resource = createTrackResource(next, 0);
       session.current = next;
+      session.startOffsetSeconds = 0;
+      session.seeking = false;
       session.player.play(resource);
       prepareUpcomingTrack(session.queue[0], next);
     } catch (error) {
@@ -264,6 +310,15 @@ export class MusicManager {
       this.playNext(guildId);
     }
   }
+}
+
+function createTrackResource(track: Track, offsetSeconds: number): AudioResource {
+  const webm = createYouTubeStream(track);
+
+  // WebM/Opus goes to Discord as is; seeking demuxes it into Opus packets to drop the start.
+  return offsetSeconds > 0
+    ? createAudioResource(createSeekedOpusStream(webm, offsetSeconds), { inputType: StreamType.Opus })
+    : createAudioResource(webm, { inputType: StreamType.WebmOpus });
 }
 
 /**

@@ -10,15 +10,17 @@ import { requireMusicChannel } from "./require-music-channel.js";
 
 export const QUEUE_PAGE_SIZE = 10;
 
-function formatTrack(track: Track): string {
-  return `[${track.title}](${track.url}) (${formatDuration(track.durationSeconds)}) — <@${track.requestedBy}>`;
+function formatTrack(track: Track, elapsedSeconds?: number): string {
+  // formatDuration shows 0 seconds as unknown, so the very start of a track reads 0:00.
+  const elapsed = elapsedSeconds === undefined ? "" : `${elapsedSeconds >= 1 ? formatDuration(elapsedSeconds) : "0:00"} / `;
+  return `[${track.title}](${track.url}) (${elapsed}${formatDuration(track.durationSeconds)}) — <@${track.requestedBy}>`;
 }
 
 export function buildQueueEmbed(queue: QueueSnapshot): EmbedBuilder {
   const lines: string[] = [];
 
   if (queue.current) {
-    lines.push(queue.paused ? "**Paused**" : "**Now playing**", `${queue.paused ? "⏸" : "▶"} ${formatTrack(queue.current)}`);
+    lines.push(queue.paused ? "**Paused**" : "**Now playing**", `${queue.paused ? "⏸" : "▶"} ${formatTrack(queue.current, queue.elapsedSeconds)}`);
   }
 
   if (queue.upcoming.length > 0) {

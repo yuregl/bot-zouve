@@ -53,6 +53,15 @@ test("buildQueueEmbed shows the current track, the next tracks, and the total", 
   assert.equal(embed.data.footer?.text, "3 tracks · 3:30 total");
 });
 
+function describeCurrentAt(elapsedSeconds: number): string {
+  return buildQueueEmbed({ current: track("A", 213), elapsedSeconds, paused: false, upcoming: [] }).data.description ?? "";
+}
+
+test("buildQueueEmbed shows how far into the current track playback is", () => {
+  assert.match(describeCurrentAt(83.4), /\(1:23 \/ 3:33\)/);
+  assert.match(describeCurrentAt(0.2), /\(0:00 \/ 3:33\)/);
+});
+
 test("buildQueueEmbed marks a paused track", () => {
   const embed = buildQueueEmbed({ current: track("A"), paused: true, upcoming: [] });
 
