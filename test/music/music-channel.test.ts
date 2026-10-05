@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ChannelType, Collection, type Guild } from "discord.js";
-import { findMusicChannel, MUSIC_CHANNEL_NAME } from "./music-channel.js";
+import { findMusicChannel, MUSIC_CHANNEL_NAME } from "../../src/music/music-channel.js";
 
 function fakeGuild(channels: { id: string; name: string; type: ChannelType }[]) {
   const cache = new Collection(channels.map((channel) => [channel.id, channel]));

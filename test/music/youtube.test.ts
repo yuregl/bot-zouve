@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { getYouTubeVideoId, isYouTubeUrl } from "./youtube.js";
+import { getYouTubeVideoId, isYouTubeUrl } from "../../src/music/youtube.js";
 
 test("getYouTubeVideoId extracts the id from YouTube video links", () => {
   assert.equal(getYouTubeVideoId("https://www.youtube.com/watch?v=dQw4w9WgXcQ"), "dQw4w9WgXcQ");
