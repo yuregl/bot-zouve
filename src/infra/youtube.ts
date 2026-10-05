@@ -115,6 +115,71 @@ export async function searchYouTube(terms: string, requestedBy: string): Promise
   return toTrack(info, info.id, requestedBy);
 }
 
+// Results compared when matching a track from another service by duration.
+const DURATION_MATCH_CANDIDATES = 5;
+
+interface SearchCandidate {
+  id?: unknown;
+  duration?: number | null;
+  live_status?: string | null;
+}
+
+/**
+ * Picks the candidate whose duration is closest to the target, preferring earlier results on
+ * ties; without a target, picks the first candidate.
+ */
+export function pickClosestDuration<T extends { duration?: number | null }>(
+  candidates: readonly T[],
+  targetSeconds: number | undefined,
+): T | undefined {
+  if (targetSeconds === undefined) {
+    return candidates[0];
+  }
+
+  let best: T | undefined;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const candidate of candidates) {
+    const distance = typeof candidate.duration === "number" ? Math.abs(candidate.duration - targetSeconds) : Number.POSITIVE_INFINITY;
+    if (best === undefined || distance < bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+
+  return best;
+}
+
+/**
+ * Finds the YouTube video for a track known from another service, such as Spotify: among
+ * the first search results, the one whose duration is closest to the track's, which skips
+ * live versions and music videos with long intros. Without a duration, the first result.
+ */
+export async function searchYouTubeByDuration(
+  terms: string,
+  durationSeconds: number | undefined,
+  requestedBy: string,
+): Promise<Track> {
+  logger.debug("Searching YouTube by duration", { terms, durationSeconds });
+  const results = await youtubeDl(`ytsearch${DURATION_MATCH_CANDIDATES}:${terms}`, {
+    ...baseFlags,
+    dumpSingleJson: true,
+    flatPlaylist: true,
+  });
+  const entries = typeof results === "string" ? [] : ((results as { entries?: SearchCandidate[] }).entries ?? []);
+  const candidates = entries.filter(
+    (entry): entry is SearchCandidate & { id: string } =>
+      typeof entry.id === "string" && VIDEO_ID_PATTERN.test(entry.id) && entry.live_status !== "is_live",
+  );
+  const match = pickClosestDuration(candidates, durationSeconds);
+
+  if (!match) {
+    throw new UnsupportedTrackError(`No YouTube results for "${terms}".`);
+  }
+
+  return resolveYouTubeVideo(match.id, requestedBy);
+}
+
 /** Plays a link to a single YouTube video. */
 export const youtubeLinkResolver: LinkResolver = {
   linkDescription: "a single YouTube video",

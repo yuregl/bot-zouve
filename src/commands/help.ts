@@ -19,7 +19,7 @@ export const helpCommand: BotCommand = {
           "",
           "`/help` — shows this help message.",
           "`/setup` — creates the #zouve-music channel (requires Manage Channels).",
-          "`/p <query>` or `/play <query>` — plays a YouTube video link or the first YouTube result for a song name, or adds it to the queue.",
+          "`/p <query>` or `/play <query>` — plays the first YouTube result for a song name, a YouTube video link, or a Spotify track link, or adds it to the queue.",
           "`/pause` — pauses the current track when playback is active.",
           "`/resume` — resumes the paused track.",
           "`/seek <time>` — jumps to a position in the current track, like `2:13` or `1:02:30`.",
