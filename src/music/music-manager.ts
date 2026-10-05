@@ -40,6 +40,21 @@ export class MusicManager {
     return this.sessions.get(guildId)?.player;
   }
 
+  getVoiceChannelId(guildId: string): string | undefined {
+    return this.sessions.get(guildId)?.connection.joinConfig.channelId ?? undefined;
+  }
+
+  /** Disconnects from the guild's voice channel, ending playback and discarding the queue. */
+  leave(guildId: string): boolean {
+    const session = this.sessions.get(guildId);
+
+    if (!session) {
+      return false;
+    }
+
+    session.connection.destroy();
+    return true;
+  }
 
   async enqueue(channel: VoiceBasedChannel, track: Track, notify: Notify): Promise<EnqueueResult> {
     const session = await this.getOrCreateSession(channel, notify);

@@ -8,6 +8,7 @@ import {
 import type { BotCommand } from "./command.js";
 import type { MusicManager } from "../music/music-manager.js";
 import { helpCommand } from "./help.js";
+import { leaveCommand } from "./leave.js";
 import { pauseCommand } from "./pause.js";
 import { playAliasCommand, playCommand } from "./play.js";
 import { setupCommand } from "./setup.js";
@@ -17,6 +18,7 @@ const logger = createLogger("commands");
 
 const commands = new Collection<string, BotCommand>([
   [helpCommand.data.name, helpCommand],
+  [leaveCommand.data.name, leaveCommand],
   [pauseCommand.data.name, pauseCommand],
   [playCommand.data.name, playCommand],
   [playAliasCommand.data.name, playAliasCommand],
