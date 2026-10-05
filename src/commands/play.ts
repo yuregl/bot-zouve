@@ -11,16 +11,23 @@ import { createLogger } from "../infra/logger.js";
 import type { MusicManager } from "../music/music-manager.js";
 import { formatDuration } from "../music/track.js";
 import { requireMusicChannel } from "./require-music-channel.js";
-import { isYouTubeUrl, resolveYouTubeTrack, UnsupportedTrackError } from "../infra/youtube.js";
+import { classifyQuery, resolveYouTubeTrack, UnsupportedTrackError } from "../infra/youtube.js";
+
+// Long enough for a song title and artist; a search query this long is almost certainly a mistake.
+const MAX_QUERY_LENGTH = 200;
 
 const logger = createLogger("play");
 
 function buildPlayCommand(name: string) {
   return new SlashCommandBuilder()
     .setName(name)
-    .setDescription("Plays a YouTube link or adds it to the queue.")
+    .setDescription("Plays a YouTube link or song name, or adds it to the queue.")
     .addStringOption((option) =>
-      option.setName("query").setDescription("YouTube video link.").setRequired(true),
+      option
+        .setName("query")
+        .setDescription("YouTube video link or song name to search for.")
+        .setRequired(true)
+        .setMaxLength(MAX_QUERY_LENGTH),
     );
 }
 
@@ -76,10 +83,11 @@ async function executePlay(
   }
 
   const query = interaction.options.getString("query", true).trim();
+  const request = classifyQuery(query);
 
-  if (!isYouTubeUrl(query)) {
+  if (request.kind === "invalid") {
     await interaction.reply({
-      content: "Send a valid YouTube video link. Searching by name is not supported yet.",
+      content: request.reason,
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -99,7 +107,9 @@ async function executePlay(
     await interaction.editReply(
       error instanceof UnsupportedTrackError
         ? error.message
-        : "Could not load this video. Check that the link is public and available.",
+        : request.kind === "search"
+          ? "Could not search YouTube right now. Try again."
+          : "Could not load this video. Check that the link is public and available.",
     );
     return;
   }
