@@ -15,7 +15,7 @@ import { queueCommand } from "./queue.js";
 import { setupCommand } from "./setup.js";
 import { skipCommand } from "./skip.js";
 import { stopCommand } from "./stop.js";
-import { createLogger } from "../logger.js";
+import { createLogger } from "../infra/logger.js";
 
 const logger = createLogger("commands");
 

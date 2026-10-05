@@ -13,7 +13,7 @@
   },
   "overrides": [
     {
-      "files": ["src/logger.ts"],
+      "files": ["src/infra/logger.ts"],
       "rules": { "no-console": "off" }
     }
   ],

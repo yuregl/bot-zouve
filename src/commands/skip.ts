@@ -3,7 +3,7 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import type { BotCommand } from "./command.js";
-import { createLogger } from "../logger.js";
+import { createLogger } from "../infra/logger.js";
 import { requireMusicChannel } from "./require-music-channel.js";
 
 const logger = createLogger("skip");
