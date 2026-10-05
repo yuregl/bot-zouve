@@ -11,7 +11,7 @@ A music bot for Discord. The project follows specification-driven development (S
 
 ## Status
 
-TypeScript, `discord.js`, and `@discordjs/voice` have been selected. `/help`, `/setup`, `/play` (alias `/p`, YouTube links only, via `yt-dlp`), `/pause`, `/stop`, `/leave`, and `/queue` are available. The deployment approach remains undecided.
+TypeScript, `discord.js`, and `@discordjs/voice` have been selected. `/help`, `/setup`, `/play` (alias `/p`, YouTube links only, via `yt-dlp`), `/pause`, `/skip`, `/stop`, `/leave`, and `/queue` are available. The deployment approach remains undecided.
 
 ## Development
 
@@ -27,7 +27,7 @@ TypeScript, `discord.js`, and `@discordjs/voice` have been selected. `/help`, `/
 
 Never share or commit the `.env` file.
 
-The global `/help`, `/setup`, `/play`, `/p`, `/pause`, `/stop`, `/leave`, and `/queue` commands are registered when the bot starts. They may take a few minutes to become available in Discord.
+The global `/help`, `/setup`, `/play`, `/p`, `/pause`, `/skip`, `/stop`, `/leave`, and `/queue` commands are registered when the bot starts. They may take a few minutes to become available in Discord.
 
 After inviting the bot, an admin runs `/setup` to create the `#zouve-music` channel; music commands only work there. Renaming that channel breaks the link, since the bot finds it by name.
 
