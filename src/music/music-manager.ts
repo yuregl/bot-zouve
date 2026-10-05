@@ -41,6 +41,11 @@ export interface QueueSnapshot {
   upcoming: Track[];
 }
 
+export type RemoveOutcome =
+  | { status: "removed"; track: Track }
+  | { status: "empty" }
+  | { status: "out-of-range"; size: number };
+
 export type SeekOutcome =
   | { status: "seeked"; track: Track }
   | { status: "not-playing" }
@@ -121,6 +126,33 @@ export class MusicManager {
     }
 
     return session.player.unpause();
+  }
+
+  /**
+   * Removes the track at a 1-based position among the upcoming tracks, as numbered by /queue.
+   * The current track is not part of that numbering.
+   */
+  remove(guildId: string, position: number): RemoveOutcome {
+    const session = this.sessions.get(guildId);
+    const size = session?.queue.length ?? 0;
+
+    if (!session || size === 0) {
+      return { status: "empty" };
+    }
+
+    if (!Number.isInteger(position) || position < 1 || position > size) {
+      return { status: "out-of-range", size };
+    }
+
+    const [track] = session.queue.splice(position - 1, 1);
+
+    // The track now next may have an older link than the one that was removed.
+    if (position === 1 && session.current) {
+      prepareUpcomingTrack(session.queue[0], session.current);
+    }
+
+    logger.info("Track removed from the queue", { guild: guildId, track: track?.title, position });
+    return track ? { status: "removed", track } : { status: "out-of-range", size };
   }
 
   /** Ends the current track so the next queued track starts; returns undefined when nothing is playing. */

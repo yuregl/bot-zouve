@@ -12,6 +12,7 @@ import { leaveCommand } from "./leave.js";
 import { pauseCommand } from "./pause.js";
 import { playAliasCommand, playCommand } from "./play.js";
 import { queueCommand } from "./queue.js";
+import { removeCommand } from "./remove.js";
 import { resumeCommand } from "./resume.js";
 import { seekCommand } from "./seek.js";
 import { setupCommand } from "./setup.js";
@@ -28,6 +29,7 @@ const commands = new Collection<string, BotCommand>([
   [playCommand.data.name, playCommand],
   [playAliasCommand.data.name, playAliasCommand],
   [queueCommand.data.name, queueCommand],
+  [removeCommand.data.name, removeCommand],
   [resumeCommand.data.name, resumeCommand],
   [seekCommand.data.name, seekCommand],
   [setupCommand.data.name, setupCommand],

@@ -27,6 +27,7 @@ export const helpCommand: BotCommand = {
           "`/stop` — stops the current track and clears the queue; the bot stays in the voice channel.",
           "`/leave` — disconnects the bot from the voice channel and clears the queue.",
           "`/queue` — shows the current track and the next tracks in the queue.",
+          "`/remove <position>` — removes a track from the queue by its number in `/queue`.",
         ].join("\n"),
       )
       .setFooter({ text: "Only YouTube is supported; playlists and live streams are not available yet." });
