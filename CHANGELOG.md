@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.0](https://github.com/yuregl/bot-zouve/compare/v1.3.0...v1.4.0) (2026-10-05)
+
+
+### Features
+
+* add /resume command ([d507e56](https://github.com/yuregl/bot-zouve/commit/d507e56a9c0051d0c0807e9b2440f026fea80c7b))
+* add /resume command ([f82c369](https://github.com/yuregl/bot-zouve/commit/f82c36998698649904a7481f52e59dae57c22231))
+* search YouTube by song name in /play ([80e0279](https://github.com/yuregl/bot-zouve/commit/80e0279b5b71713fc625b89098c9bfd48c7e3dde))
+* search YouTube by song name in /play ([724f261](https://github.com/yuregl/bot-zouve/commit/724f261ea3f99fca4e444e3a26568738a8bd827b))
+
 ## [1.3.0](https://github.com/yuregl/bot-zouve/compare/v1.2.0...v1.3.0) (2026-10-05)
 
 
