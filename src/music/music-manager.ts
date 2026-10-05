@@ -70,6 +70,17 @@ export class MusicManager {
     };
   }
 
+  /** Resumes a paused track; returns false when nothing is paused or the player refuses. */
+  resume(guildId: string): boolean {
+    const session = this.sessions.get(guildId);
+
+    if (!session?.current || session.player.state.status !== AudioPlayerStatus.Paused) {
+      return false;
+    }
+
+    return session.player.unpause();
+  }
+
   /** Ends the current track so the next queued track starts; returns undefined when nothing is playing. */
   skip(guildId: string): SkipResult | undefined {
     const session = this.sessions.get(guildId);
