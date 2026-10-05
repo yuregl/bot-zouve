@@ -12,7 +12,7 @@ import {
 } from "@discordjs/voice";
 import { EmbedBuilder, type MessageCreateOptions, type VoiceBasedChannel } from "discord.js";
 import { formatDuration, type Track } from "./track.js";
-import { createYouTubeStream } from "./youtube.js";
+import { createYouTubeStream, needsFreshAudio, refreshAudioSource } from "./youtube.js";
 import { createLogger } from "../logger.js";
 
 const logger = createLogger("music");
@@ -227,11 +227,27 @@ export class MusicManager {
       });
       session.current = next;
       session.player.play(resource);
+      prepareUpcomingTrack(session.queue[0], next);
     } catch (error) {
       logger.error("Failed to start track", { guild: guildId, track: next.title, url: next.url }, error);
       session.notify(`Could not play **${next.title}**. Skipping to the next track.`);
       this.playNext(guildId);
     }
+  }
+}
+
+/**
+ * Refreshes the next track's audio link in the background when it would expire before the
+ * current track ends, so the next track can start without waiting for yt-dlp.
+ */
+export function prepareUpcomingTrack(
+  upcoming: Track | undefined,
+  playing: Track,
+  refresh: (track: Track) => Promise<void> = refreshAudioSource,
+  now = Date.now(),
+): void {
+  if (upcoming && needsFreshAudio(upcoming, now + playing.durationSeconds * 1000)) {
+    void refresh(upcoming);
   }
 }
 

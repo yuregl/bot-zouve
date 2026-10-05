@@ -1,6 +1,6 @@
-import type { Readable } from "node:stream";
+import { Readable } from "node:stream";
 import { youtubeDl } from "youtube-dl-exec";
-import type { Track } from "./track.js";
+import type { AudioSource, Track } from "./track.js";
 import { createLogger } from "../logger.js";
 
 const logger = createLogger("youtube");
@@ -10,6 +10,17 @@ const YOUTUBE_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com"
 
 // Opus in WebM can be sent to Discord without re-encoding, so FFmpeg is not needed.
 const OPUS_WEBM_FORMAT = "bestaudio[acodec=opus][ext=webm]";
+
+// YouTube resets connections that download a whole file in one request, so the audio is
+// fetched in ranges, as yt-dlp does.
+const DIRECT_CHUNK_BYTES = 1024 * 1024;
+
+// A direct link this close to expiring is not used; yt-dlp resolves a fresh one instead.
+const EXPIRY_MARGIN_MS = 60_000;
+
+// yt-dlp attempts after the direct link fails, since YouTube occasionally rejects a
+// download (HTTP 403) that succeeds when retried.
+const YT_DLP_ATTEMPTS = 2;
 
 const baseFlags = {
   noPlaylist: true,
@@ -46,15 +57,8 @@ export function isYouTubeUrl(query: string): boolean {
   return getYouTubeVideoId(query) !== undefined;
 }
 
-export async function resolveYouTubeTrack(query: string, requestedBy: string): Promise<Track> {
-  const videoId = getYouTubeVideoId(query);
-
-  if (!videoId) {
-    throw new UnsupportedTrackError("Send a valid YouTube video link.");
-  }
-
-  logger.debug("Fetching video info", { videoId });
-  const info = await youtubeDl(watchUrl(videoId), {
+async function fetchVideoInfo(url: string) {
+  const info = await youtubeDl(url, {
     ...baseFlags,
     dumpSingleJson: true,
     format: OPUS_WEBM_FORMAT,
@@ -63,6 +67,19 @@ export async function resolveYouTubeTrack(query: string, requestedBy: string): P
   if (typeof info === "string") {
     throw new Error("yt-dlp returned unexpected output.");
   }
+
+  return info;
+}
+
+export async function resolveYouTubeTrack(query: string, requestedBy: string): Promise<Track> {
+  const videoId = getYouTubeVideoId(query);
+
+  if (!videoId) {
+    throw new UnsupportedTrackError("Send a valid YouTube video link.");
+  }
+
+  logger.debug("Fetching video info", { videoId });
+  const info = await fetchVideoInfo(watchUrl(videoId));
 
   if (info.is_live) {
     throw new UnsupportedTrackError("Live streams are not supported.");
@@ -73,10 +90,174 @@ export async function resolveYouTubeTrack(query: string, requestedBy: string): P
     url: watchUrl(videoId),
     durationSeconds: info.duration ?? 0,
     requestedBy,
+    audio: getAudioSource(info),
   };
 }
 
+/**
+ * Resolves a new direct audio link for a queued track whose link is missing or about to
+ * expire. Failures are logged and leave the track as is; playback then falls back to yt-dlp.
+ */
+export async function refreshAudioSource(track: Track): Promise<void> {
+  try {
+    track.audio = getAudioSource(await fetchVideoInfo(track.url));
+    logger.debug("Audio link refreshed", { url: track.url });
+  } catch (error) {
+    logger.warn("Could not refresh the audio link", { url: track.url }, error);
+  }
+}
+
+/** Whether the track's direct audio link will not be usable at the given time. */
+export function needsFreshAudio(track: Track, playAt: number): boolean {
+  return !track.audio || track.audio.expiresAt - EXPIRY_MARGIN_MS <= playAt;
+}
+
+/** Extracts the direct audio link from yt-dlp's JSON output, if it has a usable one. */
+export function getAudioSource(info: unknown): AudioSource | undefined {
+  if (typeof info !== "object" || info === null) {
+    return undefined;
+  }
+
+  const { url, protocol, http_headers: rawHeaders } = info as Record<string, unknown>;
+
+  if (typeof url !== "string" || protocol !== "https") {
+    return undefined;
+  }
+
+  let expiresAt: number;
+  try {
+    expiresAt = Number(new URL(url).searchParams.get("expire")) * 1000;
+  } catch {
+    return undefined;
+  }
+
+  if (!Number.isFinite(expiresAt) || expiresAt <= 0) {
+    return undefined;
+  }
+
+  const headers: Record<string, string> = {};
+  if (typeof rawHeaders === "object" && rawHeaders !== null) {
+    for (const [name, value] of Object.entries(rawHeaders)) {
+      if (typeof value === "string" || typeof value === "number") {
+        headers[name] = String(value);
+      }
+    }
+  }
+
+  return { url, headers, expiresAt };
+}
+
+export interface AudioAttempt {
+  name: string;
+  open(signal: AbortSignal): AsyncIterable<Buffer>;
+}
+
+/**
+ * Streams the track's audio, using the direct link resolved by /play when it is still
+ * valid and falling back to yt-dlp. A source that fails before sending any audio is
+ * replaced by the next one; a failure after audio started ends the stream.
+ */
 export function createYouTubeStream(track: Track): Readable {
+  const attempts: AudioAttempt[] = [];
+  const audio = track.audio;
+
+  if (audio && !needsFreshAudio(track, Date.now())) {
+    attempts.push({ name: "direct link", open: (signal) => readDirectAudio(audio, signal) });
+  }
+  for (let attempt = 1; attempt <= YT_DLP_ATTEMPTS; attempt++) {
+    attempts.push({ name: `yt-dlp (attempt ${attempt})`, open: () => spawnYtDlpStream(track) });
+  }
+
+  return Readable.from(streamFirstWorkingAttempt(track, attempts));
+}
+
+export async function* streamFirstWorkingAttempt(track: Track, attempts: AudioAttempt[]): AsyncGenerator<Buffer> {
+  const controller = new AbortController();
+
+  try {
+    for (const attempt of attempts) {
+      let iterator: AsyncIterator<Buffer> | undefined;
+      let first: IteratorResult<Buffer>;
+
+      try {
+        iterator = attempt.open(controller.signal)[Symbol.asyncIterator]();
+        first = await iterator.next();
+      } catch (error) {
+        logger.warn("Audio source failed before playback; trying the next one", {
+          url: track.url,
+          source: attempt.name,
+        }, error);
+        await iterator?.return?.();
+        continue;
+      }
+
+      if (first.done) {
+        logger.warn("Audio source ended without audio; trying the next one", {
+          url: track.url,
+          source: attempt.name,
+        });
+        continue;
+      }
+
+      logger.debug("Streaming audio", { url: track.url, source: attempt.name });
+
+      try {
+        yield first.value;
+        for (let next = await iterator.next(); !next.done; next = await iterator.next()) {
+          yield next.value;
+        }
+      } finally {
+        await iterator.return?.();
+      }
+      return;
+    }
+
+    throw new Error("Could not stream audio from YouTube.");
+  } finally {
+    controller.abort();
+  }
+}
+
+async function* readDirectAudio(audio: AudioSource, signal: AbortSignal): AsyncGenerator<Buffer> {
+  let start = 0;
+  let size: number | undefined;
+
+  while (size === undefined || start < size) {
+    const end = size === undefined ? start + DIRECT_CHUNK_BYTES - 1 : Math.min(start + DIRECT_CHUNK_BYTES, size) - 1;
+    const response = await fetch(audio.url, {
+      headers: { ...audio.headers, Range: `bytes=${start}-${end}` },
+      signal,
+    });
+
+    // Without a partial response YouTube would send the whole file, which it resets midway.
+    if (response.status !== 206) {
+      await response.body?.cancel();
+      throw new Error(`Direct audio request failed with HTTP ${response.status}.`);
+    }
+
+    size ??= parseContentRangeSize(response.headers.get("content-range"));
+    const chunk = Buffer.from(await response.arrayBuffer());
+
+    if (chunk.length === 0) {
+      return;
+    }
+
+    yield chunk;
+    start += chunk.length;
+
+    if (size === undefined && chunk.length < DIRECT_CHUNK_BYTES) {
+      return;
+    }
+  }
+}
+
+/** Reads the total size from a `Content-Range: bytes 0-1023/4096` header. */
+export function parseContentRangeSize(header: string | null): number | undefined {
+  const size = Number(header?.match(/\/(\d+)$/)?.[1]);
+  return Number.isSafeInteger(size) && size > 0 ? size : undefined;
+}
+
+function spawnYtDlpStream(track: Track): Readable {
   const subprocess = youtubeDl.exec(
     track.url,
     { ...baseFlags, format: OPUS_WEBM_FORMAT, output: "-", quiet: true },

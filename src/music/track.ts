@@ -1,8 +1,17 @@
+/** Direct link to a track's audio, resolved by yt-dlp and valid until it expires. */
+export interface AudioSource {
+  url: string;
+  headers: Record<string, string>;
+  /** Epoch milliseconds after which YouTube rejects the link. */
+  expiresAt: number;
+}
+
 export interface Track {
   title: string;
   url: string;
   durationSeconds: number;
   requestedBy: string;
+  audio?: AudioSource;
 }
 
 function pad(value: number): string {
