@@ -27,6 +27,12 @@ interface GuildSession {
   notify: Notify;
 }
 
+export interface QueueSnapshot {
+  current?: Track;
+  paused: boolean;
+  upcoming: Track[];
+}
+
 export interface EnqueueResult {
   startedPlaying: boolean;
   position: number;
@@ -42,6 +48,21 @@ export class MusicManager {
 
   getVoiceChannelId(guildId: string): string | undefined {
     return this.sessions.get(guildId)?.connection.joinConfig.channelId ?? undefined;
+  }
+
+  /** Returns a copy of the guild's current track and queue, or undefined when there is no session. */
+  getQueue(guildId: string): QueueSnapshot | undefined {
+    const session = this.sessions.get(guildId);
+
+    if (!session) {
+      return undefined;
+    }
+
+    return {
+      current: session.current,
+      paused: session.player.state.status === AudioPlayerStatus.Paused,
+      upcoming: [...session.queue],
+    };
   }
 
   /** Ends the current track and clears the queue while staying in the voice channel. */
