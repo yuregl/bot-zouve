@@ -19,14 +19,14 @@ Create a bot for Discord servers that lets members control music in a voice chan
 - **FR-002 — Pause and resume:** `/pause` pauses the current playback and `/resume` resumes paused playback.
 - **FR-003 — Skip:** `/skip` ends the current track and attempts to start the next track in the queue.
 - **FR-004 — Stop:** `/stop` ends the current track and clears the queue; the bot stays in the voice channel (use `/leave` to disconnect). It only works in `#zouve-music` and when the user is in the same voice channel as the bot; when nothing is playing or queued, it replies privately. Decided by the project owner on 2026-10-04, replacing the earlier draft in which `/stop` also disconnected.
-- **FR-005 — View queue:** `/queue` displays queued tracks in order.
+- **FR-005 — View queue:** `/queue` displays the current track (marked when paused) and the next 10 queued tracks in order, each with its duration and who requested it, followed by how many more tracks are queued and the total number of tracks and duration. Any member can use it in `#zouve-music` without being in a voice channel, and the reply is visible to everyone in the channel; when nothing is playing or queued, it replies privately. Decided by the project owner on 2026-10-04.
 - **FR-006 — Current track:** `/nowplaying` reports the track currently playing or that no track is active.
 - **FR-007 — Volume:** `/volume <value>` adjusts the volume within a range to be defined in the technical plan.
 - **FR-008 — Repeat:** `/loop <mode>` can disable repeat or repeat the current track or the queue; exact modes and semantics need confirmation.
 - **FR-009 — Permissions and state:** commands that depend on playback or a voice channel validate the current state and return a useful message when an action cannot be performed.
 - **FR-010 — Session scope:** the queue and playback controls belong to the Discord server that started the session; an action in one server does not affect another.
 - **FR-011 — Help:** `/help` lists the bot's commands and descriptions, distinguishing available commands from those still in development.
-- **FR-012 — Music channel:** `/setup`, available to members with Manage Channels, creates a `#zouve-music` text channel if it does not exist (the bot needs Manage Channels to do so). The bot finds the channel by name, so no storage is needed. Music commands (`/play`, `/p`, `/pause`, `/stop`, `/leave`, and future playback commands) only work in that channel; elsewhere, or when it does not exist, they reply privately with a link to the channel or instructions to run `/setup`. The bot posts in the channel when a track is added to the queue, when a track starts playing (title, duration, link, and who requested it), and when a track fails and is skipped.
+- **FR-012 — Music channel:** `/setup`, available to members with Manage Channels, creates a `#zouve-music` text channel if it does not exist (the bot needs Manage Channels to do so). The bot finds the channel by name, so no storage is needed. Music commands (`/play`, `/p`, `/pause`, `/stop`, `/leave`, `/queue`, and future playback commands) only work in that channel; elsewhere, or when it does not exist, they reply privately with a link to the channel or instructions to run `/setup`. The bot posts in the channel when a track is added to the queue, when a track starts playing (title, duration, link, and who requested it), and when a track fails and is skipped.
 - **FR-013 — Leave:** `/leave` disconnects the bot from the server's voice channel, ending playback and discarding the queue. It only works in `#zouve-music`, while the bot is connected, and when the user is in the same voice channel as the bot; otherwise it replies privately with the reason. `/stop` (FR-004) ends playback without disconnecting.
 
 ## Non-functional requirements
@@ -49,6 +49,7 @@ Create a bot for Discord servers that lets members control music in a voice chan
 - **AC-009:** `/p` and `/play` invoke the same playback behavior when an authorized audio source has been configured.
 - **AC-010:** `/setup` creates `#zouve-music` once and reports the existing channel on later runs; music commands used outside it are refused with a private message pointing to it.
 - **AC-011:** `/leave` from the bot's voice channel disconnects the bot and clears the queue; it is refused privately when the bot is not connected or the user is not in the same voice channel.
+- **AC-012:** `/queue` with a track playing and 13 queued shows the current track, the next 10, "…and 3 more tracks", and the total of 14 tracks with their combined duration; with nothing playing or queued, it replies privately that the queue is empty.
 
 ## Out of scope
 
