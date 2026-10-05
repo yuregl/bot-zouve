@@ -18,6 +18,23 @@ function pad(value: number): string {
   return value.toString().padStart(2, "0");
 }
 
+/**
+ * Parses a position as shown on YouTube's player, `m:ss` or `h:mm:ss` (for example `2:13`
+ * or `1:02:30`), into seconds. Returns undefined for anything else.
+ */
+export function parseTimestamp(text: string): number | undefined {
+  const match = text.trim().match(/^(?:(\d+):([0-5]\d)|(\d+)):([0-5]\d)$/);
+
+  if (!match) {
+    return undefined;
+  }
+
+  const [, hours, minutesAfterHours, minutes, seconds] = match;
+  return hours !== undefined
+    ? Number(hours) * 3600 + Number(minutesAfterHours) * 60 + Number(seconds)
+    : Number(minutes) * 60 + Number(seconds);
+}
+
 export function formatDuration(totalSeconds: number): string {
   if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) {
     return "--:--";

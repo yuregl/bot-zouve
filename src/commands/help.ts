@@ -22,6 +22,7 @@ export const helpCommand: BotCommand = {
           "`/p <query>` or `/play <query>` — plays a YouTube video link or the first YouTube result for a song name, or adds it to the queue.",
           "`/pause` — pauses the current track when playback is active.",
           "`/resume` — resumes the paused track.",
+          "`/seek <time>` — jumps to a position in the current track, like `2:13` or `1:02:30`.",
           "`/skip` — skips the current track and plays the next one in the queue.",
           "`/stop` — stops the current track and clears the queue; the bot stays in the voice channel.",
           "`/leave` — disconnects the bot from the voice channel and clears the queue.",
