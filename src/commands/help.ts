@@ -20,7 +20,7 @@ export const helpCommand: BotCommand = {
           "**Available now**",
           "`/help` — shows this help message.",
           "`/setup` — creates the #zouve-music channel (requires Manage Channels).",
-          "`/p <query>` or `/play <query>` — plays a YouTube video link or adds it to the queue.",
+          "`/p <query>` or `/play <query>` — plays a YouTube video link or the first YouTube result for a song name, or adds it to the queue.",
           "`/pause` — pauses the current track when playback is active.",
           "`/skip` — skips the current track and plays the next one in the queue.",
           "`/stop` — stops the current track and clears the queue; the bot stays in the voice channel.",
@@ -34,7 +34,7 @@ export const helpCommand: BotCommand = {
           "`/loop <mode>` — controls repeat for the current track or the queue.",
         ].join("\n"),
       )
-      .setFooter({ text: "Only YouTube links are supported for now; search by name is not available yet." });
+      .setFooter({ text: "Only YouTube is supported; playlists and live streams are not available yet." });
 
     await interaction.reply({ embeds: [helpMessage] });
   },

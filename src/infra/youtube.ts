@@ -71,18 +71,63 @@ async function fetchVideoInfo(url: string) {
   return info;
 }
 
-export async function resolveYouTubeTrack(query: string, requestedBy: string): Promise<Track> {
-  const videoId = getYouTubeVideoId(query);
+export type TrackQuery =
+  | { kind: "video"; videoId: string }
+  | { kind: "search"; terms: string }
+  | { kind: "invalid"; reason: string };
 
-  if (!videoId) {
-    throw new UnsupportedTrackError("Send a valid YouTube video link.");
+/** Decides whether /play received a YouTube video link, search terms, or an unsupported link. */
+export function classifyQuery(query: string): TrackQuery {
+  const trimmed = query.trim();
+
+  if (!trimmed) {
+    return { kind: "invalid", reason: "Send a YouTube link or the name of a song." };
   }
 
-  logger.debug("Fetching video info", { videoId });
-  const info = await fetchVideoInfo(watchUrl(videoId));
+  const videoId = getYouTubeVideoId(trimmed);
+  if (videoId) {
+    return { kind: "video", videoId };
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return { kind: "invalid", reason: "Only links to a single YouTube video are supported." };
+  }
+
+  return { kind: "search", terms: trimmed };
+}
+
+/** Resolves a YouTube video link, or the first YouTube search result for other terms. */
+export async function resolveYouTubeTrack(query: string, requestedBy: string): Promise<Track> {
+  const request = classifyQuery(query);
+
+  if (request.kind === "invalid") {
+    throw new UnsupportedTrackError(request.reason);
+  }
+
+  let info;
+  if (request.kind === "video") {
+    logger.debug("Fetching video info", { videoId: request.videoId });
+    info = await fetchVideoInfo(watchUrl(request.videoId));
+  } else {
+    logger.debug("Searching YouTube", { terms: request.terms });
+    const results = await fetchVideoInfo(`ytsearch1:${request.terms}`);
+    info = (results as { entries?: (typeof results)[] }).entries?.[0];
+
+    if (!info) {
+      throw new UnsupportedTrackError(`No YouTube results for "${request.terms}".`);
+    }
+  }
+
+  const videoId = request.kind === "video" ? request.videoId : info.id;
+
+  if (typeof videoId !== "string" || !VIDEO_ID_PATTERN.test(videoId)) {
+    throw new Error("yt-dlp returned a video without a valid id.");
+  }
 
   if (info.is_live) {
-    throw new UnsupportedTrackError("Live streams are not supported.");
+    throw new UnsupportedTrackError(
+      request.kind === "video" ? "Live streams are not supported." : `The first result for "${request.terms}" is a live stream, which is not supported.`,
+    );
   }
 
   return {

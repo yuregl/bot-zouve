@@ -11,7 +11,7 @@ A music bot for Discord. The project follows specification-driven development (S
 
 ## Status
 
-TypeScript, `discord.js`, and `@discordjs/voice` have been selected. `/help`, `/setup`, `/play` (alias `/p`, YouTube links only, via `yt-dlp`), `/pause`, `/skip`, `/stop`, `/leave`, and `/queue` are available. The deployment approach remains undecided.
+TypeScript, `discord.js`, and `@discordjs/voice` have been selected. `/help`, `/setup`, `/play` (alias `/p`, YouTube video links or song names searched on YouTube, via `yt-dlp`), `/pause`, `/skip`, `/stop`, `/leave`, and `/queue` are available. The deployment approach remains undecided.
 
 ## Development
 
