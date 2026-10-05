@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.3.0](https://github.com/yuregl/bot-zouve/compare/v1.2.0...v1.3.0) (2026-10-05)
+
+
+### Features
+
+* add /skip command ([48c7922](https://github.com/yuregl/bot-zouve/commit/48c79222f73155024738cc520d7677c00156323a))
+* add /skip command ([017d2d4](https://github.com/yuregl/bot-zouve/commit/017d2d4b8331294c7dd4b476bfc7864b0ebfbcc6))
+
+
+### Performance Improvements
+
+* refresh the next track's audio link while the current one plays ([cdfae06](https://github.com/yuregl/bot-zouve/commit/cdfae06c72a185a5a98a9698a94d4294afa19928))
+* start playback from the audio link resolved by /play ([ebc48e4](https://github.com/yuregl/bot-zouve/commit/ebc48e4d12ea90f7901be7323f3dbe010364549c))
+
 ## [1.2.0](https://github.com/yuregl/bot-zouve/compare/v1.1.0...v1.2.0) (2026-10-05)
 
 
