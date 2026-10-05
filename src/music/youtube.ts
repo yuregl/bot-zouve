@@ -91,20 +91,38 @@ export function createYouTubeStream(track: Track): Readable {
   const stream = subprocess.stdout;
   logger.debug("yt-dlp stream started", { url: track.url, pid: subprocess.pid });
 
+  // tinyspawn copies the child process fields when it spawns, so subprocess.killed and
+  // subprocess.exitCode never change; track the kill request ourselves instead.
+  let stopRequested = false;
+
   subprocess.catch((error: unknown) => {
-    // Killing yt-dlp when playback stops early is expected.
-    if (!subprocess.killed) {
-      logger.error("yt-dlp stream failed", { url: track.url, exitCode: subprocess.exitCode }, error);
-      stream.destroy(error instanceof Error ? error : new Error(String(error)));
+    if (isStoppedByPlayback(error, stopRequested)) {
+      logger.debug("yt-dlp stopped because playback ended", { url: track.url });
+      return;
     }
+    logger.error("yt-dlp stream failed", { url: track.url }, error);
+    stream.destroy(error instanceof Error ? error : new Error(String(error)));
   });
   stream.once("close", () => {
-    if (subprocess.exitCode === null) {
-      subprocess.kill();
-    }
+    stopRequested = true;
+    subprocess.kill();
   });
 
   return stream;
+}
+
+/**
+ * Whether yt-dlp exited because the bot killed it after playback stopped early
+ * (stop, leave, or skip), as opposed to failing on its own.
+ */
+export function isStoppedByPlayback(error: unknown, stopRequested: boolean): boolean {
+  return (
+    stopRequested &&
+    typeof error === "object" &&
+    error !== null &&
+    "signalCode" in error &&
+    error.signalCode === "SIGTERM"
+  );
 }
 
 function watchUrl(videoId: string): string {
