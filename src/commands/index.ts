@@ -12,6 +12,7 @@ import { leaveCommand } from "./leave.js";
 import { pauseCommand } from "./pause.js";
 import { playAliasCommand, playCommand } from "./play.js";
 import { setupCommand } from "./setup.js";
+import { stopCommand } from "./stop.js";
 import { createLogger } from "../logger.js";
 
 const logger = createLogger("commands");
@@ -23,6 +24,7 @@ const commands = new Collection<string, BotCommand>([
   [playCommand.data.name, playCommand],
   [playAliasCommand.data.name, playAliasCommand],
   [setupCommand.data.name, setupCommand],
+  [stopCommand.data.name, stopCommand],
 ]);
 
 export function registerCommands(client: Client, musicManager: MusicManager): void {
