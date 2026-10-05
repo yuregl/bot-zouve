@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.5.0](https://github.com/yuregl/bot-zouve/compare/v1.4.0...v1.5.0) (2026-10-05)
+
+
+### Features
+
+* add /remove command ([b8b32d3](https://github.com/yuregl/bot-zouve/commit/b8b32d31bf6d3361e9ac67b64e8c103849cc2fbc))
+* add /remove command ([e7a7a44](https://github.com/yuregl/bot-zouve/commit/e7a7a446af87e892a479fa8fea5b7d424889bfa0))
+* add /seek command ([cdcf3c0](https://github.com/yuregl/bot-zouve/commit/cdcf3c06be35bde8b402db607253677d3cac4641))
+* add /seek command ([e4f04cd](https://github.com/yuregl/bot-zouve/commit/e4f04cd4e9e28a1c77cc7667fbc0c4cd18a7970c))
+
 ## [1.4.0](https://github.com/yuregl/bot-zouve/compare/v1.3.0...v1.4.0) (2026-10-05)
 
 
