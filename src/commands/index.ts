@@ -13,6 +13,7 @@ import { pauseCommand } from "./pause.js";
 import { playAliasCommand, playCommand } from "./play.js";
 import { queueCommand } from "./queue.js";
 import { setupCommand } from "./setup.js";
+import { skipCommand } from "./skip.js";
 import { stopCommand } from "./stop.js";
 import { createLogger } from "../logger.js";
 
@@ -26,6 +27,7 @@ const commands = new Collection<string, BotCommand>([
   [playAliasCommand.data.name, playAliasCommand],
   [queueCommand.data.name, queueCommand],
   [setupCommand.data.name, setupCommand],
+  [skipCommand.data.name, skipCommand],
   [stopCommand.data.name, stopCommand],
 ]);
 

@@ -33,6 +33,11 @@ export interface QueueSnapshot {
   upcoming: Track[];
 }
 
+export interface SkipResult {
+  skipped: Track;
+  next?: Track;
+}
+
 export interface EnqueueResult {
   startedPlaying: boolean;
   position: number;
@@ -63,6 +68,20 @@ export class MusicManager {
       paused: session.player.state.status === AudioPlayerStatus.Paused,
       upcoming: [...session.queue],
     };
+  }
+
+  /** Ends the current track so the next queued track starts; returns undefined when nothing is playing. */
+  skip(guildId: string): SkipResult | undefined {
+    const session = this.sessions.get(guildId);
+
+    if (!session?.current) {
+      return undefined;
+    }
+
+    const result = { skipped: session.current, next: session.queue[0] };
+    // Stopping emits Idle, which starts the next queued track.
+    session.player.stop(true);
+    return result;
   }
 
   /** Ends the current track and clears the queue while staying in the voice channel. */
