@@ -40,6 +40,7 @@ export class MusicManager {
     return this.sessions.get(guildId)?.player;
   }
 
+
   async enqueue(channel: VoiceBasedChannel, track: Track, notify: Notify): Promise<EnqueueResult> {
     const session = await this.getOrCreateSession(channel, notify);
     session.notify = notify;
@@ -150,8 +151,10 @@ export class MusicManager {
 
     connection.on(VoiceConnectionStatus.Destroyed, () => {
       logger.info("Voice session closed", context);
-      player.stop(true);
+      // Remove the session before stopping so the Idle handler does not start the next track.
       this.sessions.delete(guildId);
+      session.queue.length = 0;
+      player.stop(true);
     });
 
     return session;
