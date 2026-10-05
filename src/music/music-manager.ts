@@ -44,6 +44,20 @@ export class MusicManager {
     return this.sessions.get(guildId)?.connection.joinConfig.channelId ?? undefined;
   }
 
+  /** Ends the current track and clears the queue while staying in the voice channel. */
+  stop(guildId: string): boolean {
+    const session = this.sessions.get(guildId);
+
+    if (!session || (!session.current && session.queue.length === 0)) {
+      return false;
+    }
+
+    // Clear the queue first so the Idle handler has nothing to start.
+    session.queue.length = 0;
+    session.player.stop(true);
+    return true;
+  }
+
   /** Disconnects from the guild's voice channel, ending playback and discarding the queue. */
   leave(guildId: string): boolean {
     const session = this.sessions.get(guildId);
