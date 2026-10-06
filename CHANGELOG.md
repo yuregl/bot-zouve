@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.0](https://github.com/yuregl/bot-zouve/compare/v1.5.0...v1.6.0) (2026-10-06)
+
+
+### Features
+
+* play Spotify track links through YouTube ([49a999e](https://github.com/yuregl/bot-zouve/commit/49a999ebac84bc7536f6be18a9fdb3929b88513f))
+* play Spotify track links through YouTube ([907ff11](https://github.com/yuregl/bot-zouve/commit/907ff119ab571ac144f17135e12bc97586ad3487))
+
 ## [1.5.0](https://github.com/yuregl/bot-zouve/compare/v1.4.0...v1.5.0) (2026-10-05)
 
 
