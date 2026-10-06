@@ -22,7 +22,7 @@ import { createLogger } from "../infra/logger.js";
 
 const logger = createLogger("commands");
 
-const commands = new Collection<string, BotCommand>([
+export const commands = new Collection<string, BotCommand>([
   [helpCommand.data.name, helpCommand],
   [leaveCommand.data.name, leaveCommand],
   [pauseCommand.data.name, pauseCommand],

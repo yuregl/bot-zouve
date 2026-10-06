@@ -1,4 +1,3 @@
-import { getVoiceConnection } from "@discordjs/voice";
 import {
   type ChatInputCommandInteraction,
   type MessageCreateOptions,
@@ -39,9 +38,11 @@ function buildPlayCommand(name: string) {
     );
 }
 
-async function executePlay(
+/** Runs /play; tests pass their own resolvers to avoid calling YouTube and Spotify. */
+export async function executePlay(
   interaction: ChatInputCommandInteraction,
   musicManager: MusicManager,
+  resolvers: Pick<TrackResolverRegistry, "find"> = trackResolvers,
 ): Promise<void> {
   const guild = interaction.guild;
 
@@ -80,7 +81,7 @@ async function executePlay(
     return;
   }
 
-  const botChannelId = getVoiceConnection(guild.id)?.joinConfig.channelId;
+  const botChannelId = musicManager.getVoiceChannelId(guild.id);
 
   if (botChannelId && botChannelId !== voiceChannel.id) {
     await interaction.reply({
@@ -90,7 +91,7 @@ async function executePlay(
     return;
   }
 
-  const match = trackResolvers.find(interaction.options.getString("query", true));
+  const match = resolvers.find(interaction.options.getString("query", true));
 
   if ("reason" in match) {
     await interaction.reply({

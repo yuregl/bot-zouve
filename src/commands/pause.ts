@@ -1,4 +1,3 @@
-import { AudioPlayerStatus, getVoiceConnection } from "@discordjs/voice";
 import {
   MessageFlags,
   SlashCommandBuilder,
@@ -36,9 +35,9 @@ export const pauseCommand: BotCommand = {
       return;
     }
 
-    const audioPlayer = musicManager.getAudioPlayer(guildId);
+    const queue = musicManager.getQueue(guildId);
 
-    if (!audioPlayer || audioPlayer.state.status !== AudioPlayerStatus.Playing) {
+    if (!queue?.current || queue.paused) {
       await interaction.reply({
         content: "There is no music playing right now.",
         flags: MessageFlags.Ephemeral,
@@ -46,9 +45,7 @@ export const pauseCommand: BotCommand = {
       return;
     }
 
-    const voiceConnection = getVoiceConnection(guildId);
-
-    if (voiceConnection?.joinConfig.channelId !== memberVoiceChannelId) {
+    if (musicManager.getVoiceChannelId(guildId) !== memberVoiceChannelId) {
       await interaction.reply({
         content: "Join the same voice channel as the bot to pause playback.",
         flags: MessageFlags.Ephemeral,
@@ -56,7 +53,7 @@ export const pauseCommand: BotCommand = {
       return;
     }
 
-    if (!audioPlayer.pause()) {
+    if (!musicManager.pause(guildId)) {
       await interaction.reply({
         content: "Playback could not be paused.",
         flags: MessageFlags.Ephemeral,
