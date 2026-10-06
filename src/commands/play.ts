@@ -11,7 +11,14 @@ import { createLogger } from "../infra/logger.js";
 import type { MusicManager } from "../music/music-manager.js";
 import { formatDuration } from "../music/track.js";
 import { requireMusicChannel } from "./require-music-channel.js";
-import { classifyQuery, resolveYouTubeTrack, UnsupportedTrackError } from "../infra/youtube.js";
+import { youtubeLinkResolver, youtubeSearchResolver } from "../infra/youtube.js";
+import { TrackResolverRegistry, UnsupportedTrackError } from "../music/track-resolver.js";
+
+// Links are resolved by their site; any other text is searched on YouTube.
+const trackResolvers = new TrackResolverRegistry({
+  links: [youtubeLinkResolver],
+  fallback: youtubeSearchResolver,
+});
 
 // Long enough for a song title and artist; a search query this long is almost certainly a mistake.
 const MAX_QUERY_LENGTH = 200;
@@ -82,35 +89,36 @@ async function executePlay(
     return;
   }
 
-  const query = interaction.options.getString("query", true).trim();
-  const request = classifyQuery(query);
+  const match = trackResolvers.find(interaction.options.getString("query", true));
 
-  if (request.kind === "invalid") {
+  if ("reason" in match) {
     await interaction.reply({
-      content: request.reason,
+      content: match.reason,
       flags: MessageFlags.Ephemeral,
     });
     return;
   }
 
+  const { resolver, query } = match;
   await interaction.deferReply();
 
-  let track;
+  let tracks;
   try {
-    track = await resolveYouTubeTrack(query, interaction.user.id);
+    tracks = await resolver.resolve(query, interaction.user.id);
   } catch (error) {
     if (error instanceof UnsupportedTrackError) {
       logger.warn("Track rejected", { query, reason: error.message });
     } else {
-      logger.error("Failed to load YouTube track", { query }, error);
+      logger.error("Failed to resolve track", { query }, error);
     }
-    await interaction.editReply(
-      error instanceof UnsupportedTrackError
-        ? error.message
-        : request.kind === "search"
-          ? "Could not search YouTube right now. Try again."
-          : "Could not load this video. Check that the link is public and available.",
-    );
+    await interaction.editReply(error instanceof UnsupportedTrackError ? error.message : resolver.failureMessage);
+    return;
+  }
+
+  const [track] = tracks;
+
+  if (!track) {
+    await interaction.editReply("Nothing to play was found for that request.");
     return;
   }
 
@@ -126,19 +134,23 @@ async function executePlay(
   let result;
   try {
     result = await musicManager.enqueue(voiceChannel, track, notify);
+    for (const extra of tracks.slice(1)) {
+      await musicManager.enqueue(voiceChannel, extra, notify);
+    }
   } catch (error) {
     logger.error("Failed to start playback", { guild: guild.id, voiceChannel: voiceChannel.name, track: track.title }, error);
     await interaction.editReply("Could not connect to the voice channel. Try again.");
     return;
   }
 
-  logger.info("Track queued", { guild: guild.name, track: track.title, url: track.url, ...result });
+  logger.info("Track queued", { guild: guild.name, track: track.title, url: track.url, count: tracks.length, ...result });
 
   const label = `**${track.title}** (${formatDuration(track.durationSeconds)})`;
+  const others = tracks.length > 1 ? ` and ${tracks.length - 1} more` : "";
   await interaction.editReply(
     result.startedPlaying
-      ? `Added to the queue: ${label} — starting now.`
-      : `Added to the queue at position ${result.position}: ${label}`,
+      ? `Added to the queue: ${label}${others} — starting now.`
+      : `Added to the queue at position ${result.position}: ${label}${others}`,
   );
 }
 

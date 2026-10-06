@@ -3,7 +3,6 @@ import { test } from "node:test";
 import type { Track } from "../../src/music/track.js";
 import {
   type AudioAttempt,
-  classifyQuery,
   getAudioSource,
   getYouTubeVideoId,
   isStoppedByPlayback,
@@ -11,6 +10,7 @@ import {
   needsFreshAudio,
   parseContentRangeSize,
   streamFirstWorkingAttempt,
+  youtubeLinkResolver,
 } from "../../src/infra/youtube.js";
 
 const TRACK: Track = { title: "A", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", durationSeconds: 60, requestedBy: "u" };
@@ -67,27 +67,15 @@ test("isYouTubeUrl rejects search terms, other sites, and playlist-only links", 
   assert.equal(isYouTubeUrl("https://www.youtube.com/watch?v=short"), false);
 });
 
-test("classifyQuery recognizes YouTube video links", () => {
-  assert.deepEqual(classifyQuery("https://youtu.be/dQw4w9WgXcQ"), { kind: "video", videoId: "dQw4w9WgXcQ" });
-  assert.deepEqual(classifyQuery("  https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RD1  "), {
-    kind: "video",
-    videoId: "dQw4w9WgXcQ",
-  });
-});
+function accepts(link: string): boolean {
+  return youtubeLinkResolver.canResolve(new URL(link));
+}
 
-test("classifyQuery searches for anything that is not a link", () => {
-  assert.deepEqual(classifyQuery("  never gonna give you up "), { kind: "search", terms: "never gonna give you up" });
-  // Without a scheme it is not parsed as a link, so it is searched instead.
-  assert.deepEqual(classifyQuery("youtube.com/watch?v=dQw4w9WgXcQ"), {
-    kind: "search",
-    terms: "youtube.com/watch?v=dQw4w9WgXcQ",
-  });
-});
-
-test("classifyQuery refuses empty text and unsupported links", () => {
-  assert.equal(classifyQuery("   ").kind, "invalid");
-  assert.equal(classifyQuery("https://open.spotify.com/track/123").kind, "invalid");
-  assert.equal(classifyQuery("https://www.youtube.com/playlist?list=RDRY3B_XXmTYU").kind, "invalid");
+test("youtubeLinkResolver accepts links to a single YouTube video", () => {
+  assert.equal(accepts("https://youtu.be/dQw4w9WgXcQ"), true);
+  assert.equal(accepts("https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RD1"), true);
+  assert.equal(accepts("https://www.youtube.com/playlist?list=RDRY3B_XXmTYU"), false);
+  assert.equal(accepts("https://open.spotify.com/track/123"), false);
 });
 
 test("isStoppedByPlayback accepts yt-dlp killed after playback stopped", () => {

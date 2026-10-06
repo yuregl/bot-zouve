@@ -22,6 +22,7 @@
 - `src/commands/`: slash commands; validate the request and reply to the user.
 - `src/music/`: music behavior, such as tracks, the queue, and playback sessions.
 - `src/infra/`: technical details and adapters to external services, such as logging and YouTube (`yt-dlp`). Put new adapters here.
+- `/play` searches YouTube by default; links are resolved by the `LinkResolver` (`src/music/track-resolver.ts`) for their site. A new music source is a `LinkResolver` in `src/infra/` added to the registry in `/play`; it should not require other changes to the command.
 - `src/index.ts`: entry point that wires the bot together.
 
 ## Implementation and validation
