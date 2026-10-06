@@ -94,3 +94,28 @@ test("registerCommands ignores unknown commands and other interactions", async (
   assert.deepEqual(unknown.replies, []);
   assert.equal(commands.has("unknown"), false);
 });
+
+test("every command except /help refuses to run outside a server", async () => {
+  for (const [name, command] of commands) {
+    if (name === "help") {
+      continue;
+    }
+    const replies: InteractionReplyOptions[] = [];
+    const interaction = {
+      guild: null,
+      guildId: null,
+      inGuild: () => false,
+      reply: async (response: InteractionReplyOptions) => {
+        replies.push(response);
+      },
+    };
+
+    await command.execute(interaction as never, {} as MusicManager);
+
+    assert.deepEqual(
+      replies,
+      [{ content: "This command can only be used in a server.", flags: MessageFlags.Ephemeral }],
+      `/${name}`,
+    );
+  }
+});
