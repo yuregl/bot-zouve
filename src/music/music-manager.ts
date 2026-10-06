@@ -6,6 +6,7 @@ import {
   createAudioPlayer,
   createAudioResource,
   entersState,
+  getVoiceConnection,
   joinVoiceChannel,
   type AudioPlayer,
   type AudioResource,
@@ -41,6 +42,8 @@ export interface QueueSnapshot {
   upcoming: Track[];
 }
 
+export type ResourceFactory = (track: Track, offsetSeconds: number) => AudioResource;
+
 export type RemoveOutcome =
   | { status: "removed"; track: Track }
   | { status: "empty" }
@@ -65,12 +68,17 @@ export class MusicManager {
   private readonly sessions = new Map<string, GuildSession>();
   private readonly pendingSessions = new Map<string, Promise<GuildSession>>();
 
+  /** `createResource` streams a track from a position; tests replace it to avoid downloading audio. */
+  constructor(private readonly createResource: ResourceFactory = createTrackResource) {}
+
   getAudioPlayer(guildId: string): AudioPlayer | undefined {
     return this.sessions.get(guildId)?.player;
   }
 
+  /** The voice channel the bot is in, or still connecting to, in the guild. */
   getVoiceChannelId(guildId: string): string | undefined {
-    return this.sessions.get(guildId)?.connection.joinConfig.channelId ?? undefined;
+    const connection = this.sessions.get(guildId)?.connection ?? getVoiceConnection(guildId);
+    return connection?.joinConfig.channelId ?? undefined;
   }
 
   /** Returns a copy of the guild's current track and queue, or undefined when there is no session. */
@@ -112,9 +120,20 @@ export class MusicManager {
     session.seeking = true;
     // Replacing the resource destroys the old stream without emitting Idle, so the queue
     // does not advance.
-    session.player.play(createTrackResource(track, positionSeconds));
+    session.player.play(this.createResource(track, positionSeconds));
     logger.info("Seeked", { guild: guildId, track: track.title, positionSeconds });
     return { status: "seeked", track };
+  }
+
+  /** Pauses the playing track; returns false when nothing is playing or the player refuses. */
+  pause(guildId: string): boolean {
+    const session = this.sessions.get(guildId);
+
+    if (!session?.current || session.player.state.status !== AudioPlayerStatus.Playing) {
+      return false;
+    }
+
+    return session.player.pause();
   }
 
   /** Resumes a paused track; returns false when nothing is paused or the player refuses. */
@@ -330,7 +349,7 @@ export class MusicManager {
     }
 
     try {
-      const resource = createTrackResource(next, 0);
+      const resource = this.createResource(next, 0);
       session.current = next;
       session.startOffsetSeconds = 0;
       session.seeking = false;

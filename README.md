@@ -22,7 +22,7 @@ TypeScript, `discord.js`, and `@discordjs/voice` have been selected. `/help`, `/
 - `npm run build`: compile TypeScript to `dist/`.
 - `npm run lint`: lint the code with Oxlint (`.oxlintrc.json`).
 - `npm test`: run the unit tests.
-- `npm run test:coverage`: run the unit tests with a coverage report.
+- `npm run test:coverage`: run the unit tests with a coverage report; fails if line, branch, or function coverage is below 90%.
 - `npm start`: start the compiled version using variables from `.env`.
 
 Never share or commit the `.env` file.
@@ -31,9 +31,13 @@ The global `/help`, `/setup`, `/play`, `/p`, `/pause`, `/resume`, `/seek`, `/ski
 
 After inviting the bot, an admin runs `/setup` to create the `#zouve-music` channel; music commands only work there. Renaming that channel breaks the link, since the bot finds it by name.
 
+## Git hooks
+
+`npm install` installs Git hooks with [Lefthook](https://lefthook.dev) (`lefthook.yml`): before each push, the type check, lint, and tests with the 90% coverage minimum run in parallel and block the push if any fails; each commit message is checked with commitlint. CI runs the same checks, so skipping a hook with `--no-verify` does not skip them.
+
 ## Continuous integration
 
-GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `main`: type check, lint, build, tests on Node.js 22 and 24, coverage, commit message linting (Conventional Commits, `commitlint.config.mjs`), and secret scanning with Gitleaks.
+GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `main`: type check, lint, build, tests on Node.js 22 and 24, coverage (at least 90% of lines, branches, and functions), commit message linting (Conventional Commits, `commitlint.config.mjs`), and secret scanning with Gitleaks.
 
 ## Logs
 

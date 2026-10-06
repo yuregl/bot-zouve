@@ -1,8 +1,26 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { Readable } from "node:stream";
+import { mock, test } from "node:test";
 import type { Track } from "../../src/music/track.js";
-import {
-  type AudioAttempt,
+import { UnsupportedTrackError } from "../../src/music/track-resolver.js";
+import type { AudioAttempt } from "../../src/infra/youtube.js";
+
+// yt-dlp is replaced so the tests never call YouTube: each test sets what it returns.
+let ytDlpJson: (url: string, flags: Record<string, unknown>) => unknown = () => ({});
+let ytDlpStream: (url: string) => FakeSubprocess = () => fakeSubprocess([], { exitCode: 0 });
+const ytDlpCalls: { url: string; flags: Record<string, unknown> }[] = [];
+
+const fakeYoutubeDl = Object.assign(
+  async (url: string, flags: Record<string, unknown>) => {
+    ytDlpCalls.push({ url, flags });
+    return ytDlpJson(url, flags);
+  },
+  { exec: (url: string) => ytDlpStream(url) },
+);
+mock.module("youtube-dl-exec", { namedExports: { youtubeDl: fakeYoutubeDl } });
+
+const {
+  createYouTubeStream,
   getAudioSource,
   getYouTubeVideoId,
   isStoppedByPlayback,
@@ -10,9 +28,58 @@ import {
   needsFreshAudio,
   parseContentRangeSize,
   pickClosestDuration,
+  refreshAudioSource,
+  resolveYouTubeVideo,
+  searchYouTube,
+  searchYouTubeByDuration,
   streamFirstWorkingAttempt,
   youtubeLinkResolver,
-} from "../../src/infra/youtube.js";
+  youtubeSearchResolver,
+} = await import("../../src/infra/youtube.js");
+
+type FakeSubprocess = Promise<unknown> & { stdout: Readable; pid: number; kill: () => boolean; killed: boolean };
+
+/** A yt-dlp process that writes the given chunks and then exits, or is killed. */
+function fakeSubprocess(chunks: string[], exit: { exitCode?: number }): FakeSubprocess {
+  let settle: { resolve: (value: unknown) => void; reject: (error: unknown) => void } | undefined;
+  const promise = new Promise((resolve, reject) => {
+    settle = { resolve, reject };
+  });
+  const stdout = Readable.from(chunks.map((chunk) => Buffer.from(chunk)));
+  const subprocess = Object.assign(promise, {
+    stdout,
+    pid: 1,
+    killed: false,
+    kill: () => {
+      subprocess.killed = true;
+      settle?.reject(Object.assign(new Error("killed"), { signalCode: "SIGTERM", exitCode: null }));
+      return true;
+    },
+  });
+  stdout.once("end", () => {
+    if (exit.exitCode === 0) {
+      settle?.resolve(undefined);
+    } else {
+      settle?.reject(Object.assign(new Error("HTTP Error 403"), { signalCode: null, exitCode: exit.exitCode }));
+    }
+  });
+  return subprocess;
+}
+
+const DIRECT_URL = `https://rr1.googlevideo.com/videoplayback?expire=${Math.floor(Date.now() / 1000) + 3600}&itag=251`;
+
+function videoInfo(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "dQw4w9WgXcQ",
+    title: "Never Gonna Give You Up",
+    duration: 213,
+    is_live: false,
+    url: DIRECT_URL,
+    protocol: "https",
+    http_headers: { "User-Agent": "UA" },
+    ...overrides,
+  };
+}
 
 const TRACK: Track = { title: "A", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", durationSeconds: 60, requestedBy: "u" };
 
@@ -174,4 +241,156 @@ test("streamFirstWorkingAttempt fails when every source fails", async () => {
     collect(streamFirstWorkingAttempt(TRACK, [attempt("a", [], 0), attempt("b", [])])),
     /Could not stream audio/,
   );
+});
+
+test("resolveYouTubeVideo reads the title, duration, and direct audio link of a video", async () => {
+  ytDlpJson = () => videoInfo();
+
+  const track = await resolveYouTubeVideo("dQw4w9WgXcQ", "user");
+
+  assert.equal(track.title, "Never Gonna Give You Up");
+  assert.equal(track.url, "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+  assert.equal(track.durationSeconds, 213);
+  assert.equal(track.audio?.url, DIRECT_URL);
+  assert.equal(ytDlpCalls.at(-1)?.flags.format, "bestaudio[acodec=opus][ext=webm]");
+});
+
+test("resolveYouTubeVideo refuses live streams and unexpected output", async () => {
+  ytDlpJson = () => videoInfo({ is_live: true });
+  await assert.rejects(resolveYouTubeVideo("dQw4w9WgXcQ", "user"), UnsupportedTrackError);
+
+  ytDlpJson = () => "not json";
+  await assert.rejects(resolveYouTubeVideo("dQw4w9WgXcQ", "user"), /unexpected output/);
+});
+
+test("searchYouTube plays the first result for the terms", async () => {
+  ytDlpJson = () => ({ entries: [videoInfo({ id: "first000000" }), videoInfo({ id: "second00000" })] });
+
+  const track = await searchYouTube("numb", "user");
+
+  assert.equal(ytDlpCalls.at(-1)?.url, "ytsearch1:numb");
+  assert.equal(track.url, "https://www.youtube.com/watch?v=first000000");
+});
+
+test("searchYouTube refuses empty results and live streams, and rejects invalid ids", async () => {
+  ytDlpJson = () => ({ entries: [] });
+  await assert.rejects(searchYouTube("numb", "user"), /No YouTube results/);
+
+  ytDlpJson = () => ({ entries: [videoInfo({ is_live: true })] });
+  await assert.rejects(searchYouTube("numb", "user"), /live stream/);
+
+  ytDlpJson = () => ({ entries: [videoInfo({ id: "bad" })] });
+  await assert.rejects(searchYouTube("numb", "user"), /valid id/);
+});
+
+test("searchYouTubeByDuration plays the closest duration among results that are not live", async () => {
+  ytDlpJson = (url) =>
+    url.startsWith("ytsearch5:")
+      ? {
+          entries: [
+            { id: "video000000", duration: 188 },
+            { id: "livestream0", duration: 186, live_status: "is_live" },
+            { id: "bad", duration: 186 },
+            { id: "audio000000", duration: 186 },
+          ],
+        }
+      : videoInfo({ id: "audio000000" });
+
+  const track = await searchYouTubeByDuration("Linkin Park - Numb", 186, "user");
+
+  assert.equal(track.url, "https://www.youtube.com/watch?v=audio000000");
+  assert.equal(ytDlpCalls.at(-2)?.flags.flatPlaylist, true);
+});
+
+test("searchYouTubeByDuration refuses searches without usable results", async () => {
+  for (const results of [{ entries: [{ id: "livestream0", live_status: "is_live" }] }, "not json"]) {
+    ytDlpJson = () => results;
+    await assert.rejects(searchYouTubeByDuration("numb", 186, "user"), UnsupportedTrackError);
+  }
+});
+
+test("the YouTube resolvers resolve links and search terms", async () => {
+  ytDlpJson = (url) => (url.startsWith("ytsearch1:") ? { entries: [videoInfo({ id: "searched000" })] } : videoInfo());
+
+  const [linked] = await youtubeLinkResolver.resolve("https://youtu.be/dQw4w9WgXcQ", "user");
+  const [searched] = await youtubeSearchResolver.resolve("numb", "user");
+
+  assert.equal(linked?.url, "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+  assert.equal(searched?.url, "https://www.youtube.com/watch?v=searched000");
+  await assert.rejects(youtubeLinkResolver.resolve("https://youtu.be/bad", "user"), UnsupportedTrackError);
+});
+
+test("refreshAudioSource replaces the link, and keeps the track when yt-dlp fails", async () => {
+  const track: Track = { ...TRACK };
+
+  ytDlpJson = () => videoInfo();
+  await refreshAudioSource(track);
+  assert.equal(track.audio?.url, DIRECT_URL);
+
+  ytDlpJson = () => {
+    throw new Error("yt-dlp failed");
+  };
+  await refreshAudioSource(track);
+  assert.equal(track.audio?.url, DIRECT_URL);
+});
+
+/** Serves `audio` from the direct link in ranges, as googlevideo.com does. */
+function serveDirectAudio(audio: Buffer, status = 206) {
+  const ranges: string[] = [];
+  mock.method(globalThis, "fetch", async (_url: string, init: RequestInit) => {
+    const range = new Headers(init.headers).get("Range") ?? "";
+    ranges.push(range);
+    const [start = 0, end = 0] = range.replace("bytes=", "").split("-").map(Number);
+    const body = audio.subarray(start, Math.min(end + 1, audio.length));
+    return new Response(status === 206 ? new Uint8Array(body) : "", {
+      status,
+      headers: { "Content-Range": `bytes ${start}-${start + body.length - 1}/${audio.length}` },
+    });
+  });
+  return ranges;
+}
+
+test("createYouTubeStream downloads the direct link in 1 MiB ranges", async (t) => {
+  t.after(() => mock.restoreAll());
+  const audio = Buffer.alloc(2.5 * 1024 * 1024, 7);
+  const ranges = serveDirectAudio(audio);
+  const streamed: Buffer[] = [];
+
+  for await (const chunk of createYouTubeStream({ ...TRACK, audio: getAudioSource(videoInfo()) })) {
+    streamed.push(chunk);
+  }
+
+  assert.equal(Buffer.concat(streamed).length, audio.length);
+  assert.deepEqual(ranges, ["bytes=0-1048575", "bytes=1048576-2097151", "bytes=2097152-2621439"]);
+});
+
+test("createYouTubeStream falls back to yt-dlp when the direct link is refused", async (t) => {
+  t.after(() => mock.restoreAll());
+  serveDirectAudio(Buffer.alloc(10), 403);
+  ytDlpStream = () => fakeSubprocess(["from ", "yt-dlp"], { exitCode: 0 });
+
+  assert.equal(await collect(createYouTubeStream({ ...TRACK, audio: getAudioSource(videoInfo()) })), "from yt-dlp");
+});
+
+test("createYouTubeStream retries yt-dlp when it fails before any audio", async () => {
+  const attempts: number[] = [];
+  ytDlpStream = () => {
+    attempts.push(attempts.length + 1);
+    return attempts.length === 1 ? fakeSubprocess([], { exitCode: 1 }) : fakeSubprocess(["audio"], { exitCode: 0 });
+  };
+
+  assert.equal(await collect(createYouTubeStream(TRACK)), "audio");
+  assert.deepEqual(attempts, [1, 2]);
+});
+
+test("createYouTubeStream kills yt-dlp when playback stops early", async () => {
+  const process = fakeSubprocess(["a", "b", "c"], { exitCode: 0 });
+  ytDlpStream = () => process;
+  const stream = createYouTubeStream(TRACK);
+
+  await new Promise((resolve) => stream.once("data", resolve));
+  stream.destroy();
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  assert.equal(process.killed, true);
 });

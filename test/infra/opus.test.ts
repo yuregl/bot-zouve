@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { Readable } from "node:stream";
 import { test } from "node:test";
-import { opusPacketDurationMs, skipOpusPackets } from "../../src/infra/opus.js";
+import { createSeekedOpusStream, opusPacketDurationMs, skipOpusPackets } from "../../src/infra/opus.js";
 
 // Table-of-contents byte: configuration in the top 5 bits, frame count code in the low 2.
 function packet(config: number, frameCountCode = 0, ...rest: number[]): Buffer {
@@ -35,4 +35,28 @@ test("skipOpusPackets drops packets until the offset and keeps the rest", async 
 
   // 60 ms of 20 ms packets is three packets.
   assert.deepEqual(kept.map((chunk) => chunk[1]), [3, 4, 5, 6, 7, 8, 9]);
+});
+
+test("createSeekedOpusStream ends cleanly when the source has no audio", async () => {
+  const packets: Buffer[] = [];
+
+  for await (const chunk of createSeekedOpusStream(Readable.from([]), 30)) {
+    packets.push(chunk);
+  }
+
+  assert.deepEqual(packets, []);
+});
+
+test("createSeekedOpusStream passes on a failure of the source", async () => {
+  const failing = new Readable({
+    read() {
+      this.destroy(new Error("download failed"));
+    },
+  });
+
+  await assert.rejects(async () => {
+    for await (const _ of createSeekedOpusStream(failing, 30)) {
+      // Drains the stream until it fails.
+    }
+  }, /download failed/);
 });
