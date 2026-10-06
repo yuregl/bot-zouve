@@ -11,28 +11,29 @@ import { createLogger } from "../infra/logger.js";
 import type { MusicManager } from "../music/music-manager.js";
 import { formatDuration } from "../music/track.js";
 import { requireMusicChannel } from "./require-music-channel.js";
-import { youtubeLinkResolver, youtubeSearchResolver } from "../infra/youtube.js";
+import { createSpotifyLinkResolver } from "../infra/spotify.js";
+import { searchYouTubeByDuration, youtubeLinkResolver, youtubeSearchResolver } from "../infra/youtube.js";
 import { TrackResolverRegistry, UnsupportedTrackError } from "../music/track-resolver.js";
+
+const logger = createLogger("play");
 
 // Links are resolved by their site; any other text is searched on YouTube.
 const trackResolvers = new TrackResolverRegistry({
-  links: [youtubeLinkResolver],
+  links: [youtubeLinkResolver, createSpotifyLinkResolver(searchYouTubeByDuration)],
   fallback: youtubeSearchResolver,
 });
 
 // Long enough for a song title and artist; a search query this long is almost certainly a mistake.
 const MAX_QUERY_LENGTH = 200;
 
-const logger = createLogger("play");
-
 function buildPlayCommand(name: string) {
   return new SlashCommandBuilder()
     .setName(name)
-    .setDescription("Plays a YouTube link or song name, or adds it to the queue.")
+    .setDescription("Plays a song name, a YouTube link, or a Spotify track link, or adds it to the queue.")
     .addStringOption((option) =>
       option
         .setName("query")
-        .setDescription("YouTube video link or song name to search for.")
+        .setDescription("Song name to search on YouTube, a YouTube video link, or a Spotify track link.")
         .setRequired(true)
         .setMaxLength(MAX_QUERY_LENGTH),
     );

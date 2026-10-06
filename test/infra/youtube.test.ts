@@ -9,6 +9,7 @@ import {
   isYouTubeUrl,
   needsFreshAudio,
   parseContentRangeSize,
+  pickClosestDuration,
   streamFirstWorkingAttempt,
   youtubeLinkResolver,
 } from "../../src/infra/youtube.js";
@@ -65,6 +66,21 @@ test("isYouTubeUrl rejects search terms, other sites, and playlist-only links", 
   assert.equal(isYouTubeUrl("https://example.com/watch?v=dQw4w9WgXcQ"), false);
   assert.equal(isYouTubeUrl("https://www.youtube.com/playlist?list=RDRY3B_XXmTYU"), false);
   assert.equal(isYouTubeUrl("https://www.youtube.com/watch?v=short"), false);
+});
+
+test("pickClosestDuration picks the closest duration and the earlier result on ties", () => {
+  const results = [
+    { id: "video", duration: 188 },
+    { id: "audio", duration: 186 },
+    { id: "lyrics", duration: 186 },
+    { id: "unknown", duration: null },
+  ];
+
+  assert.equal(pickClosestDuration(results, 186)?.id, "audio");
+  assert.equal(pickClosestDuration([{ id: "unknown", duration: null }], 186)?.id, "unknown");
+  assert.equal(pickClosestDuration([], 186), undefined);
+  // Without a duration to compare, the first result.
+  assert.equal(pickClosestDuration(results, undefined)?.id, "video");
 });
 
 function accepts(link: string): boolean {
