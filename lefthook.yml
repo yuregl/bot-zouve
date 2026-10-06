@@ -1,0 +1,21 @@
+# Git hooks run by Lefthook (https://lefthook.dev). They are installed by `npm install`.
+# CI runs the same checks, so skipping a hook (`--no-verify`) does not skip them.
+
+# Blocks the push unless the code type checks, passes lint, and keeps test coverage at 90%.
+pre-push:
+  parallel: true
+  jobs:
+    - name: typecheck
+      run: npm run check
+    - name: lint
+      run: npm run lint
+    - name: tests and coverage
+      run: npm run test:coverage
+      env:
+        LOG_FILE: ""
+
+# Blocks commits whose message does not follow Conventional Commits (commitlint.config.mjs).
+commit-msg:
+  jobs:
+    - name: commitlint
+      run: npx --no -- commitlint --edit {1}

@@ -30,6 +30,7 @@
 - Add or update relevant tests for each implemented requirement.
 - Keep tests in `test/`, next to `src/`, mirroring its structure: the tests for `src/<path>/<name>.ts` live in `test/<path>/<name>.test.ts` (for example, `src/commands/play.ts` → `test/commands/play.test.ts`). Every module with behavior in `src/` must have a matching test file.
 - Run the applicable tests, static checks, and build; report the commands and results.
+- Keep test coverage at or above 90% of lines, branches, and functions (`npm run test:coverage`); the pre-push hook and CI enforce it. Replace external services (yt-dlp, Discord voice, HTTP) with fakes, such as `mock.module` or injected functions, so tests never use the network.
 - Keep setup and operations documentation aligned with actual behavior.
 - Do not implement features that depend on an audio provider until the provider and its terms of use have been evaluated and approved.
 
