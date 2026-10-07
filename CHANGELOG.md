@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.7.0](https://github.com/yuregl/bot-zouve/compare/v1.6.0...v1.7.0) (2026-10-07)
+
+
+### Features
+
+* leave the voice channel after 5 minutes idle ([662d314](https://github.com/yuregl/bot-zouve/commit/662d3144f6b965707af9407cbb69e3eb4430f8e7))
+* leave the voice channel after 5 minutes idle ([96cdcb7](https://github.com/yuregl/bot-zouve/commit/96cdcb73645a3d27e66b82998f8e4543a600d3c5))
+* leave the voice channel when no one is listening ([e5be389](https://github.com/yuregl/bot-zouve/commit/e5be389e4caa5e1a89f541162530b48f6f276a7f))
+* queue YouTube playlists and Mixes, up to 50 tracks ([1ee7801](https://github.com/yuregl/bot-zouve/commit/1ee7801b23fda19389890f7afe403cc9bc7e8667))
+* read inactivity timeouts from environment variables ([d95af5a](https://github.com/yuregl/bot-zouve/commit/d95af5a928fd0c89795dc84a09309b24898bca0e))
+* remove a range of tracks with /remove ([6c37d19](https://github.com/yuregl/bot-zouve/commit/6c37d19cfaa0319a439d259c621db197c090174e))
+* vote to skip tracks requested by someone else ([d5a858f](https://github.com/yuregl/bot-zouve/commit/d5a858f8aba491790ddaae964c4dda279a14d93d))
+
 ## [1.6.0](https://github.com/yuregl/bot-zouve/compare/v1.5.0...v1.6.0) (2026-10-06)
 
 
