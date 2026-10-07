@@ -17,8 +17,8 @@ services:
     image: mongo:8
     environment:
       # Creates the root user on the first start, when the data volume is empty.
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:?Set MONGO_USERNAME in .env}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?Set MONGO_PASSWORD in .env}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:?}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?}
     # Only this computer can connect, for `npm run dev` and database tools.
     ports:
       - "127.0.0.1:27017:27017"
