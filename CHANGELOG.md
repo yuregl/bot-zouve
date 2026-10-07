@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.9.0](https://github.com/yuregl/bot-zouve/compare/v1.8.0...v1.9.0) (2026-10-07)
+
+
+### Features
+
+* birthday content collection and /birthday list ([7abc88f](https://github.com/yuregl/bot-zouve/commit/7abc88f5e1cf9811fb32d9dce95dcc8959f40349))
+* congratulate members on their birthday ([068a8b1](https://github.com/yuregl/bot-zouve/commit/068a8b1d51b31be5615e92052431deb425ba71d2))
+* congratulate members on their birthday ([7fa42b3](https://github.com/yuregl/bot-zouve/commit/7fa42b3a597a394c7496c6ad8c80c2b740842b23))
+
+
+### Bug Fixes
+
+* create MongoDB indexes after connecting ([0b97bb4](https://github.com/yuregl/bot-zouve/commit/0b97bb43cbc4b9e5bc25bb7e202a7a13d7e6d9bc))
+
 ## [1.8.0](https://github.com/yuregl/bot-zouve/compare/v1.7.0...v1.8.0) (2026-10-07)
 
 
