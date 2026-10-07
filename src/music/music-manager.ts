@@ -20,6 +20,9 @@ import { createLogger } from "../infra/logger.js";
 
 const logger = createLogger("music");
 
+/** How long the bot stays in the voice channel with nothing playing or queued. */
+export const IDLE_TIMEOUT_MS = 5 * 60_000;
+
 type Notify = (message: string | MessageCreateOptions) => void;
 
 interface GuildSession {
@@ -31,6 +34,8 @@ interface GuildSession {
   startOffsetSeconds: number;
   /** True while a seek restarts the current track, so it is not announced again. */
   seeking: boolean;
+  /** Disconnects the bot when it fires; set while nothing is playing or queued. */
+  idleTimer?: NodeJS.Timeout;
   notify: Notify;
 }
 
@@ -328,6 +333,7 @@ export class MusicManager {
 
     connection.on(VoiceConnectionStatus.Destroyed, () => {
       logger.info("Voice session closed", context);
+      clearTimeout(session.idleTimer);
       // Remove the session before stopping so the Idle handler does not start the next track.
       this.sessions.delete(guildId);
       session.queue.length = 0;
@@ -344,9 +350,13 @@ export class MusicManager {
     if (!session || !next) {
       if (session) {
         logger.info("Queue finished", { guild: guildId });
+        this.startIdleTimer(guildId, session);
       }
       return;
     }
+
+    clearTimeout(session.idleTimer);
+    session.idleTimer = undefined;
 
     try {
       const resource = this.createResource(next, 0);
@@ -360,6 +370,22 @@ export class MusicManager {
       session.notify(`Could not play **${next.title}**. Skipping to the next track.`);
       this.playNext(guildId);
     }
+  }
+
+  private startIdleTimer(guildId: string, session: GuildSession): void {
+    clearTimeout(session.idleTimer);
+    session.idleTimer = setTimeout(() => {
+      session.idleTimer = undefined;
+
+      if (this.sessions.get(guildId) !== session || session.current || session.queue.length > 0) {
+        return;
+      }
+
+      const minutes = IDLE_TIMEOUT_MS / 60_000;
+      logger.info("Leaving voice channel after being idle", { guild: guildId, minutes });
+      session.notify(`Left the voice channel after ${minutes} minutes without music.`);
+      session.connection.destroy();
+    }, IDLE_TIMEOUT_MS);
   }
 }
 
