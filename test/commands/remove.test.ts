@@ -13,13 +13,14 @@ const TRACK: Track = { title: "Numb", url: "https://www.youtube.com/watch?v=A", 
 
 function setup(options: {
   position: number;
+  end?: number;
   channelId?: string;
   memberVoiceChannelId?: string;
   botVoiceChannelId?: string;
   outcome?: RemoveOutcome;
 }) {
   const replies: (string | InteractionReplyOptions)[] = [];
-  const removeCalls: number[] = [];
+  const removeCalls: [number, number][] = [];
 
   const guild = {
     name: "Test guild",
@@ -41,7 +42,7 @@ function setup(options: {
     channelId: options.channelId ?? MUSIC_CHANNEL_ID,
     user: { id: "user", tag: "user#0001" },
     inGuild: () => true,
-    options: { getInteger: () => options.position },
+    options: { getInteger: (name: string) => (name === "start" ? options.position : (options.end ?? null)) },
     reply: async (response: string | InteractionReplyOptions) => {
       replies.push(response);
     },
@@ -49,9 +50,9 @@ function setup(options: {
 
   const musicManager = {
     getVoiceChannelId: () => options.botVoiceChannelId,
-    remove: (_guildId: string, position: number) => {
-      removeCalls.push(position);
-      return options.outcome ?? { status: "removed", track: TRACK };
+    remove: (_guildId: string, start: number, end: number) => {
+      removeCalls.push([start, end]);
+      return options.outcome ?? { status: "removed", tracks: [TRACK] };
     },
   } as unknown as MusicManager;
 
@@ -69,8 +70,34 @@ test("/remove removes the track at the given position", async () => {
 
   await removeCommand.execute(interaction, musicManager);
 
-  assert.deepEqual(removeCalls, [2]);
+  assert.deepEqual(removeCalls, [[2, 2]]);
   assert.equal(replies[0], "Removed **Numb** from the queue.");
+});
+
+test("/remove removes a range of tracks", async () => {
+  const { interaction, musicManager, replies, removeCalls } = setup({
+    ...inBotChannel,
+    position: 2,
+    end: 4,
+    outcome: { status: "removed", tracks: [TRACK, TRACK, TRACK] },
+  });
+
+  await removeCommand.execute(interaction, musicManager);
+
+  assert.deepEqual(removeCalls, [[2, 4]]);
+  assert.equal(replies[0], "Removed 3 tracks (2 to 4) from the queue.");
+});
+
+test("/remove explains why a range is refused", async () => {
+  const outcome = { status: "out-of-range", size: 3 } as const;
+  const backwards = setup({ ...inBotChannel, position: 4, end: 2, outcome });
+  const tooLong = setup({ ...inBotChannel, position: 2, end: 9, outcome });
+
+  await removeCommand.execute(backwards.interaction, backwards.musicManager);
+  await removeCommand.execute(tooLong.interaction, tooLong.musicManager);
+
+  assert.match(String((backwards.replies[0] as InteractionReplyOptions).content), /end \(2\) must not come before the start \(4\)/);
+  assert.match(String((tooLong.replies[0] as InteractionReplyOptions).content), /Tracks 2 to 9 are not all in the queue; it has 3 tracks/);
 });
 
 test("/remove says how many tracks are queued when the position does not exist", async () => {

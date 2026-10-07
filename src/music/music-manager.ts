@@ -50,7 +50,7 @@ export interface QueueSnapshot {
 export type ResourceFactory = (track: Track, offsetSeconds: number) => AudioResource;
 
 export type RemoveOutcome =
-  | { status: "removed"; track: Track }
+  | { status: "removed"; tracks: Track[] }
   | { status: "empty" }
   | { status: "out-of-range"; size: number };
 
@@ -153,10 +153,10 @@ export class MusicManager {
   }
 
   /**
-   * Removes the track at a 1-based position among the upcoming tracks, as numbered by /queue.
-   * The current track is not part of that numbering.
+   * Removes the upcoming tracks from `start` through `end` (1-based and inclusive), as numbered
+   * by /queue; the current track is not part of that numbering. Without `end`, removes one track.
    */
-  remove(guildId: string, position: number): RemoveOutcome {
+  remove(guildId: string, start: number, end = start): RemoveOutcome {
     const session = this.sessions.get(guildId);
     const size = session?.queue.length ?? 0;
 
@@ -164,19 +164,19 @@ export class MusicManager {
       return { status: "empty" };
     }
 
-    if (!Number.isInteger(position) || position < 1 || position > size) {
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < start || end > size) {
       return { status: "out-of-range", size };
     }
 
-    const [track] = session.queue.splice(position - 1, 1);
+    const tracks = session.queue.splice(start - 1, end - start + 1);
 
-    // The track now next may have an older link than the one that was removed.
-    if (position === 1 && session.current) {
+    // The track now next may have an older link than the ones that were removed.
+    if (start === 1 && session.current) {
       prepareUpcomingTrack(session.queue[0], session.current);
     }
 
-    logger.info("Track removed from the queue", { guild: guildId, track: track?.title, position });
-    return track ? { status: "removed", track } : { status: "out-of-range", size };
+    logger.info("Tracks removed from the queue", { guild: guildId, start, end, count: tracks.length });
+    return { status: "removed", tracks };
   }
 
   /** Ends the current track so the next queued track starts; returns undefined when nothing is playing. */

@@ -225,8 +225,26 @@ test("remove takes the track at its /queue number out of the queue", () => {
   const outcome = manager.remove("guild", 2);
 
   assert.equal(outcome.status, "removed");
-  assert.equal(outcome.status === "removed" && outcome.track.title, "B");
+  assert.deepEqual(outcome.status === "removed" && outcome.tracks.map((removed) => removed.title), ["B"]);
   assert.deepEqual(queue.map((queued) => queued.title), ["A", "C"]);
+});
+
+test("remove takes a range of tracks out of the queue", () => {
+  const { manager, queue } = managerWithQueue(["A", "B", "C", "D", "E"]);
+
+  const outcome = manager.remove("guild", 2, 4);
+
+  assert.deepEqual(outcome.status === "removed" && outcome.tracks.map((removed) => removed.title), ["B", "C", "D"]);
+  assert.deepEqual(queue.map((queued) => queued.title), ["A", "E"]);
+});
+
+test("remove refuses ranges that end before they start or past the queue", () => {
+  const { manager, queue } = managerWithQueue(["A", "B", "C"]);
+
+  assert.deepEqual(manager.remove("guild", 3, 2), { status: "out-of-range", size: 3 });
+  assert.deepEqual(manager.remove("guild", 2, 4), { status: "out-of-range", size: 3 });
+  assert.deepEqual(manager.remove("guild", 1, 2.5), { status: "out-of-range", size: 3 });
+  assert.equal(queue.length, 3);
 });
 
 test("remove refuses positions that do not exist", () => {

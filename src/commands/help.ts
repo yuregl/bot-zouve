@@ -27,7 +27,7 @@ export const helpCommand: BotCommand = {
           "`/stop` — stops the current track and clears the queue; the bot stays in the voice channel for up to 5 minutes.",
           "`/leave` — disconnects the bot from the voice channel and clears the queue.",
           "`/queue` — shows the current track and the next tracks in the queue.",
-          "`/remove <position>` — removes a track from the queue by its number in `/queue`.",
+          "`/remove <start> [end]` — removes a track, or the tracks from `start` to `end`, by their numbers in `/queue`.",
         ].join("\n"),
       )
       .setFooter({ text: "YouTube playlists and Mixes add up to 50 tracks; live streams are not supported." });
