@@ -2,6 +2,7 @@ import { Client, Events, GatewayIntentBits } from "discord.js";
 import { registerCommands } from "./commands/index.js";
 import { readTimeouts } from "./infra/config.js";
 import { createLogger } from "./infra/logger.js";
+import { connectMongo } from "./infra/db/mongo.js";
 import { MusicManager } from "./music/music-manager.js";
 import { watchVoicePresence } from "./music/voice-presence.js";
 
@@ -38,5 +39,8 @@ client.on(Events.Warn, (message) => logger.warn(message));
 client.once(Events.ClientReady, async (readyClient) => {
   logger.info("Bot connected", { user: readyClient.user.tag, guilds: readyClient.guilds.cache.size });
 });
+
+// Runs in the background: the music commands work while the database is unavailable.
+void connectMongo();
 
 await client.login(token);
