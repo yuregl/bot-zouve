@@ -87,7 +87,9 @@ mock.module("@discordjs/voice", {
   },
 });
 
-const { IDLE_TIMEOUT_MS, MusicManager, prepareUpcomingTrack } = await import("../../src/music/music-manager.js");
+const { MusicManager, prepareUpcomingTrack } = await import("../../src/music/music-manager.js");
+const { DEFAULT_TIMEOUTS } = await import("../../src/infra/config.js");
+const IDLE_TIMEOUT_MS = DEFAULT_TIMEOUTS.idleMs;
 
 const FAR_FUTURE = Date.now() + 24 * 60 * 60_000;
 
@@ -481,4 +483,18 @@ test("stop starts the idle wait, and leaving earlier cancels it", async (t) => {
 
   // Only the "Now playing" announcement; no idle message after /leave.
   assert.equal(notifications.length, 1);
+});
+
+
+test("the timeouts given to the manager replace the defaults", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const notifications: unknown[] = [];
+  const manager = new MusicManager(() => ({ playbackDuration: 0 }) as never, { idleMs: 90_000, aloneMs: 30_000, skipVoteMs: 1000 });
+  await manager.enqueue(voiceChannel(), freshTrack("A"), (message) => notifications.push(message));
+
+  voiceFakes.players.at(-1)?.stop();
+  t.mock.timers.tick(90_000);
+
+  assert.equal(voiceFakes.connections.at(-1)?.state.status, VoiceConnectionStatus.Destroyed);
+  assert.match(String(notifications.at(-1)), /after 1 minute 30 seconds without music/);
 });

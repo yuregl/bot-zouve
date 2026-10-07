@@ -39,6 +39,14 @@ After inviting the bot, an admin runs `/setup` to create the `#zouve-music` chan
 
 GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `main`: type check, lint, build, tests on Node.js 22 and 24, coverage (at least 90% of lines, branches, and functions), commit message linting (Conventional Commits, `commitlint.config.mjs`), and secret scanning with Gitleaks.
 
+## Timeouts
+
+Optional variables in `.env`, in seconds; when unset, the defaults apply. The bot refuses to start when one is not a whole number above zero.
+
+- `IDLE_TIMEOUT_SECONDS` (default 300): time with nothing playing or queued before the bot leaves the voice channel.
+- `ALONE_TIMEOUT_SECONDS` (default 180): time with no one but bots in the voice channel before the bot leaves it.
+- `SKIP_VOTE_TIMEOUT_SECONDS` (default 60): how long a vote to skip stays open.
+
 ## Logs
 
 The bot logs to the terminal and appends to `logs/bot.log` (ignored by Git). Each line has a UTC timestamp, level, module, message, and JSON context; errors include the stack trace, the underlying cause, and `yt-dlp` error output.

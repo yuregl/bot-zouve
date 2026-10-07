@@ -1,5 +1,6 @@
 import { Client, Events, GatewayIntentBits } from "discord.js";
 import { registerCommands } from "./commands/index.js";
+import { readTimeouts } from "./infra/config.js";
 import { createLogger } from "./infra/logger.js";
 import { MusicManager } from "./music/music-manager.js";
 
@@ -24,7 +25,8 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
 });
 
-const musicManager = new MusicManager();
+// Fails at startup when a timeout variable is invalid, instead of misbehaving later.
+const musicManager = new MusicManager(undefined, readTimeouts());
 
 registerCommands(client, musicManager);
 

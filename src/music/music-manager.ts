@@ -17,11 +17,9 @@ import { formatDuration, type Track } from "./track.js";
 import { createSeekedOpusStream } from "../infra/opus.js";
 import { createYouTubeStream, needsFreshAudio, refreshAudioSource } from "../infra/youtube.js";
 import { createLogger } from "../infra/logger.js";
+import { DEFAULT_TIMEOUTS, describeDuration, type Timeouts } from "../infra/config.js";
 
 const logger = createLogger("music");
-
-/** How long the bot stays in the voice channel with nothing playing or queued. */
-export const IDLE_TIMEOUT_MS = 5 * 60_000;
 
 type Notify = (message: string | MessageCreateOptions) => void;
 
@@ -73,8 +71,14 @@ export class MusicManager {
   private readonly sessions = new Map<string, GuildSession>();
   private readonly pendingSessions = new Map<string, Promise<GuildSession>>();
 
-  /** `createResource` streams a track from a position; tests replace it to avoid downloading audio. */
-  constructor(private readonly createResource: ResourceFactory = createTrackResource) {}
+  /**
+   * `createResource` streams a track from a position; tests replace it to avoid downloading audio.
+   * `timeouts` come from the environment (see readTimeouts).
+   */
+  constructor(
+    private readonly createResource: ResourceFactory = createTrackResource,
+    readonly timeouts: Timeouts = DEFAULT_TIMEOUTS,
+  ) {}
 
   getAudioPlayer(guildId: string): AudioPlayer | undefined {
     return this.sessions.get(guildId)?.player;
@@ -381,11 +385,10 @@ export class MusicManager {
         return;
       }
 
-      const minutes = IDLE_TIMEOUT_MS / 60_000;
-      logger.info("Leaving voice channel after being idle", { guild: guildId, minutes });
-      session.notify(`Left the voice channel after ${minutes} minutes without music.`);
+      logger.info("Leaving voice channel after being idle", { guild: guildId, timeoutMs: this.timeouts.idleMs });
+      session.notify(`Left the voice channel after ${describeDuration(this.timeouts.idleMs)} without music.`);
       session.connection.destroy();
-    }, IDLE_TIMEOUT_MS);
+    }, this.timeouts.idleMs);
   }
 }
 
