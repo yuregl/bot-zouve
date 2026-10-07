@@ -9,7 +9,8 @@
     "no-console": "error",
     "eqeqeq": "error",
     "typescript/consistent-type-imports": "error",
-    "typescript/no-explicit-any": "error"
+    "typescript/no-explicit-any": "error",
+    "no-underscore-dangle": ["warn", { "allow": ["_id"] }]
   },
   "overrides": [
     {

@@ -16,10 +16,59 @@ export interface Birthday extends BirthdayDate {
 
 export type SaveResult = "created" | "updated";
 
+/** A saved birthday as lists show it: without the year, so no one's age is exposed. */
+export interface BirthdayEntry {
+  userId: string;
+  username: string;
+  day: number;
+  month: number;
+}
+
 /** Stores birthdays; the command depends on this instead of on the database. */
 export interface BirthdayRepository {
   /** Saves the member's birthday in the guild, replacing an existing one. */
   save(birthday: Birthday): Promise<SaveResult>;
+  /** The guild's birthdays, in no particular order. */
+  list(guildId: string): Promise<BirthdayEntry[]>;
+}
+
+/** The time zone that decides which day is "today" for birthdays. */
+export const BIRTHDAY_TIME_ZONE = "America/Sao_Paulo";
+
+export interface CalendarDay {
+  year: number;
+  month: number;
+  day: number;
+}
+
+/** The calendar day of an instant in a time zone. */
+export function calendarDayIn(timeZone: string, now: Date = new Date()): CalendarDay {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "numeric", day: "numeric" }).formatToParts(now);
+  const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  return { year: part("year"), month: part("month"), day: part("day") };
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Days from today until the next birthday on that day and month: 0 when it is today. A
+ * 29/02 birthday is celebrated on 28/02 in years that are not leap years.
+ */
+export function daysUntilBirthday(birthday: Pick<BirthdayEntry, "day" | "month">, today: CalendarDay): number {
+  const start = Date.UTC(today.year, today.month - 1, today.day);
+  const occurrence = (year: number) => {
+    const day = Math.min(birthday.day, daysInMonth(birthday.month, year));
+    return Date.UTC(year, birthday.month - 1, day);
+  };
+  const next = occurrence(today.year) >= start ? occurrence(today.year) : occurrence(today.year + 1);
+  return Math.round((next - start) / DAY_MS);
+}
+
+/** Sorts birthdays by how soon they come, starting today; ties keep the username order. */
+export function sortByNextBirthday<T extends BirthdayEntry>(birthdays: readonly T[], today: CalendarDay): (T & { daysUntil: number })[] {
+  return birthdays
+    .map((birthday) => ({ ...birthday, daysUntil: daysUntilBirthday(birthday, today) }))
+    .toSorted((a, b) => a.daysUntil - b.daysUntil || a.username.localeCompare(b.username));
 }
 
 export const MIN_BIRTH_YEAR = 1900;

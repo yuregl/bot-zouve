@@ -6,7 +6,7 @@ Implements [spec.md](./spec.md).
 
 - `src/birthdays/birthday.ts`: the `Birthday` type, `parseBirthdayDate` (FR-004), `formatBirthdayDate`, and the `BirthdayRepository` interface the command depends on.
 - `src/birthdays/permissions.ts`: `parseRoleList` reads `BIRTHDAY_MANAGER_ROLES`; `canManageBirthdays` checks the member's roles by name or ID (FR-003).
-- `src/infra/db/mongo.ts`: connects Mongoose to `MONGODB_URI` at startup. A missing variable or a failed connection is logged without stopping the bot (FR-007).
+- `src/infra/db/mongo.ts`: connects Mongoose to `MONGODB_URI` at startup. A missing variable or a failed connection is logged without stopping the bot (FR-007). After connecting, it creates the indexes of every model; Mongoose's automatic index creation is off because, with operations not queued while disconnected, it failed silently for models registered before the connection (found on 2026-10-07, when a duplicate video was accepted).
 - `src/infra/db/models/birthday-model.ts`: the Mongoose schema and model.
 - `src/repositories/birthday-repository.ts`: the `BirthdayRepository` that turns a birthday into the stored form, saves it with an upsert, and reports whether it already existed (FR-002, FR-005).
 - `src/commands/birthday.ts`: `/birthday set`. Like `/play`, it takes its dependencies as parameters with defaults, so tests pass fakes.
