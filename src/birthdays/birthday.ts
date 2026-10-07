@@ -30,6 +30,18 @@ export interface BirthdayRepository {
   save(birthday: Birthday): Promise<SaveResult>;
   /** The guild's birthdays, in no particular order. */
   list(guildId: string): Promise<BirthdayEntry[]>;
+  /**
+   * Marks the member as congratulated on `today` (YYYY-MM-DD), unless they already were;
+   * returns undefined when another run already claimed it.
+   */
+  claimAnnouncement(guildId: string, userId: string, today: string): Promise<AnnouncementClaim | undefined>;
+  /** Undoes a claim after the congratulation could not be sent, so it is tried again. */
+  releaseAnnouncement(guildId: string, userId: string, today: string, claim: AnnouncementClaim): Promise<void>;
+}
+
+/** A claimed announcement, with the previous date to restore when releasing it. */
+export interface AnnouncementClaim {
+  previous?: string;
 }
 
 /** The time zone that decides which day is "today" for birthdays. */
@@ -41,11 +53,35 @@ export interface CalendarDay {
   day: number;
 }
 
+export interface Clock extends CalendarDay {
+  hour: number;
+  minute: number;
+}
+
+/** The date and time of an instant in a time zone. */
+export function clockIn(timeZone: string, now: Date = new Date()): Clock {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  return { year: part("year"), month: part("month"), day: part("day"), hour: part("hour"), minute: part("minute") };
+}
+
 /** The calendar day of an instant in a time zone. */
 export function calendarDayIn(timeZone: string, now: Date = new Date()): CalendarDay {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "numeric", day: "numeric" }).formatToParts(now);
-  const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
-  return { year: part("year"), month: part("month"), day: part("day") };
+  const { year, month, day } = clockIn(timeZone, now);
+  return { year, month, day };
+}
+
+/** Writes a calendar day as `YYYY-MM-DD`. */
+export function isoDay({ year, month, day }: CalendarDay): string {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;

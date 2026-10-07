@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DEFAULT_TIMEOUTS, describeDuration, readTimeouts } from "../../src/infra/config.js";
+import { DEFAULT_TIMEOUTS, describeDuration, readAnnounceTime, readTimeouts } from "../../src/infra/config.js";
 
 test("readTimeouts keeps the defaults when the variables are unset or empty", () => {
   assert.deepEqual(readTimeouts({}), DEFAULT_TIMEOUTS);
@@ -27,4 +27,20 @@ test("describeDuration writes minutes and seconds for users", () => {
   assert.equal(describeDuration(90_000), "1 minute 30 seconds");
   assert.equal(describeDuration(1000), "1 second");
   assert.equal(describeDuration(45_000), "45 seconds");
+});
+
+test("readAnnounceTime keeps 09:00 when the variable is unset or empty", () => {
+  assert.deepEqual(readAnnounceTime({}), { hour: 9, minute: 0 });
+  assert.deepEqual(readAnnounceTime({ BIRTHDAY_ANNOUNCE_TIME: " " }), { hour: 9, minute: 0 });
+});
+
+test("readAnnounceTime reads HH:MM", () => {
+  assert.deepEqual(readAnnounceTime({ BIRTHDAY_ANNOUNCE_TIME: "00:00" }), { hour: 0, minute: 0 });
+  assert.deepEqual(readAnnounceTime({ BIRTHDAY_ANNOUNCE_TIME: "23:59" }), { hour: 23, minute: 59 });
+});
+
+test("readAnnounceTime refuses other formats and impossible times", () => {
+  for (const value of ["9:00", "24:00", "09:60", "09h", "nine"]) {
+    assert.throws(() => readAnnounceTime({ BIRTHDAY_ANNOUNCE_TIME: value }), /BIRTHDAY_ANNOUNCE_TIME must be a time written as HH:MM/, value);
+  }
 });

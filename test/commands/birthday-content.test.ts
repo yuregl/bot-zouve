@@ -36,6 +36,12 @@ function fakeRepository(options: { fail?: boolean; removeFails?: boolean } = {})
       items.splice(index, 1);
       return true;
     },
+    setVideoAvailability: async (_guildId: string, id: string, available: boolean) => {
+      const item = items.find((candidate) => candidate.id === id);
+      if (item) {
+        item.unavailable = !available;
+      }
+    },
   };
   return { repository, items };
 }
@@ -223,4 +229,14 @@ test("every command says content cannot be changed when the database fails", asy
 
     assert.match(text(replies[0]), /cannot be changed right now/, run.name);
   }
+});
+
+test("list marks videos that were found unavailable", async () => {
+  const { repository, items } = await collectionWith(THREE_ITEMS);
+  await repository.setVideoAvailability("guild", items[2]?.id ?? "", false);
+  const list = context(repository);
+
+  await listContent(list.context);
+
+  assert.match(embedOf(list.replies[0]).description ?? "", /\*\*3\.\*\* 🎬 https:\/\/www\.youtube\.com\/watch\?v=dQw4w9WgXcQ ⚠️ unavailable/);
 });

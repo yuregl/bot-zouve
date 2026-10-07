@@ -45,7 +45,7 @@ Build, for each server, a collection of birthday messages and YouTube videos (fo
 
 - Posting messages and videos on members' birthdays.
 - Content for a specific member, editing items, and uploading video files.
-- Checking that a video exists or is available.
+- Checking that a video exists or is available when it is added. Videos are checked before they are sent ([0004](../0004-birthday-announcements/spec.md), FR-004), and `/birthday content list` marks the unavailable ones.
 
 ## Confirmed decisions
 

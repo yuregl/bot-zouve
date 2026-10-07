@@ -68,6 +68,8 @@ function setup(options: Options = {}) {
         }
         return options.birthdays ?? [];
       },
+      claimAnnouncement: async () => undefined,
+      releaseAnnouncement: async () => {},
     },
     contentRepository: {
       add: async (item: NewBirthdayContent) => {
@@ -76,6 +78,7 @@ function setup(options: Options = {}) {
       },
       list: async () => collection.map((item, index) => ({ ...item, id: String(index), createdAt: new Date() })),
       remove: async (_guildId: string, id: string) => collection.splice(Number(id), 1).length > 0,
+      setVideoAvailability: async () => {},
     },
     managerRoles: options.managerRoles ?? ["admin"],
     isDatabaseReady: () => options.databaseReady ?? true,

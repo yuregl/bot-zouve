@@ -8,6 +8,7 @@ export interface StoredBirthday {
   birthDate?: Date | null;
   day?: number | null;
   month?: number | null;
+  lastAnnouncedOn?: string | null;
 }
 
 /** The database operations the repository uses; tests replace them. */
@@ -15,6 +16,9 @@ export interface BirthdayStore {
   /** Upserts and returns MongoDB's result metadata. */
   upsert(filter: object, update: object): Promise<{ lastErrorObject?: { updatedExisting?: boolean } } | null>;
   findByGuild(guildId: string): Promise<StoredBirthday[]>;
+  /** Updates the first matching document and returns it as it was before, or null when none matches. */
+  findOneAndUpdate(filter: object, update: object): Promise<StoredBirthday | null>;
+  updateOne(filter: object, update: object): Promise<unknown>;
 }
 
 /** The store backed by the Mongoose model. */
@@ -22,6 +26,8 @@ export const mongooseBirthdayStore: BirthdayStore = {
   upsert: (filter, update) =>
     BirthdayModel.findOneAndUpdate(filter, update, { upsert: true, runValidators: true, includeResultMetadata: true }).exec(),
   findByGuild: (guildId) => BirthdayModel.find({ guildId }).lean<StoredBirthday[]>().exec(),
+  findOneAndUpdate: (filter, update) => BirthdayModel.findOneAndUpdate(filter, update).lean<StoredBirthday>().exec(),
+  updateOne: (filter, update) => BirthdayModel.updateOne(filter, update).exec(),
 };
 
 /**
@@ -55,6 +61,22 @@ export function createBirthdayRepository(store: BirthdayStore = mongooseBirthday
     async list(guildId) {
       const stored = await store.findByGuild(guildId);
       return stored.map(toBirthdayEntry).filter((entry) => entry !== undefined);
+    },
+
+    async claimAnnouncement(guildId, userId, today) {
+      // One atomic update, so two runs cannot both claim the same birthday.
+      const before = await store.findOneAndUpdate(
+        { guildId, userId, lastAnnouncedOn: { $ne: today } },
+        { $set: { lastAnnouncedOn: today } },
+      );
+      return before ? { previous: before.lastAnnouncedOn ?? undefined } : undefined;
+    },
+
+    async releaseAnnouncement(guildId, userId, today, claim) {
+      await store.updateOne(
+        { guildId, userId, lastAnnouncedOn: today },
+        claim.previous === undefined ? { $unset: { lastAnnouncedOn: 1 } } : { $set: { lastAnnouncedOn: claim.previous } },
+      );
     },
   };
 }

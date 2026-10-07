@@ -120,7 +120,8 @@ export async function listContent(context: ContentContext): Promise<void> {
   const lines: string[] = [];
   let length = 0;
   for (const [index, item] of items.entries()) {
-    const line = `**${index + 1}.** ${describeContent(item)} — ${userMention(item.addedBy)}`;
+    const warning = item.unavailable ? " ⚠️ unavailable" : "";
+    const line = `**${index + 1}.** ${describeContent(item)}${warning} — ${userMention(item.addedBy)}`;
     if (length + line.length + 1 > MAX_LIST_LENGTH) {
       lines.push(`…and ${items.length - index} more.`);
       break;

@@ -9,6 +9,9 @@ const birthdayContentSchema = new Schema(
     text: { type: String, maxlength: MAX_MESSAGE_LENGTH },
     videoId: { type: String },
     videoUrl: { type: String },
+    // Set when a check finds the video deleted, private, or not embeddable.
+    unavailable: { type: Boolean, default: false },
+    checkedAt: { type: Date },
     addedBy: { type: String, required: true },
   },
   { timestamps: true },

@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   calendarDayIn,
+  clockIn,
   daysUntilBirthday,
+  isoDay,
   formatBirthdayDate,
   parseBirthdayDate,
   sortByNextBirthday,
@@ -93,4 +95,13 @@ test("sortByNextBirthday starts with today's birthdays and ties by username", ()
       ["zoe", 364],
     ],
   );
+});
+
+test("clockIn gives the date and the 24-hour time in the time zone", () => {
+  assert.deepEqual(clockIn("America/Sao_Paulo", new Date("2026-08-24T12:05:00Z")), { year: 2026, month: 8, day: 24, hour: 9, minute: 5 });
+  assert.deepEqual(clockIn("America/Sao_Paulo", new Date("2026-08-24T03:00:00Z")), { year: 2026, month: 8, day: 24, hour: 0, minute: 0 });
+});
+
+test("isoDay writes YYYY-MM-DD", () => {
+  assert.equal(isoDay({ year: 2026, month: 8, day: 4 }), "2026-08-04");
 });
