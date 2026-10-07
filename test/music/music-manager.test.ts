@@ -87,7 +87,7 @@ mock.module("@discordjs/voice", {
   },
 });
 
-const { MusicManager, prepareUpcomingTrack } = await import("../../src/music/music-manager.js");
+const { IDLE_TIMEOUT_MS, MusicManager, prepareUpcomingTrack } = await import("../../src/music/music-manager.js");
 
 const FAR_FUTURE = Date.now() + 24 * 60 * 60_000;
 
@@ -407,4 +407,60 @@ test("enqueue fails and cleans up when the voice connection does not become read
 
   assert.equal(voiceFakes.connections.at(-1)?.state.status, VoiceConnectionStatus.Destroyed);
   assert.equal(manager.getQueue("guild"), undefined);
+});
+
+test("the bot leaves the voice channel after being idle once the queue finishes", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const { manager, notifications, notify } = playingManager();
+  await manager.enqueue(voiceChannel(), freshTrack("A"), notify);
+
+  voiceFakes.players.at(-1)?.stop();
+  t.mock.timers.tick(IDLE_TIMEOUT_MS - 1);
+  assert.equal(voiceFakes.connections.at(-1)?.state.status, VoiceConnectionStatus.Ready);
+
+  t.mock.timers.tick(1);
+  assert.equal(voiceFakes.connections.at(-1)?.state.status, VoiceConnectionStatus.Destroyed);
+  assert.equal(manager.getQueue("guild"), undefined);
+  assert.match(String(notifications.at(-1)), /Left the voice channel after 5 minutes without music/);
+});
+
+test("a track that starts while idle keeps the bot connected", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const { manager, played, notify } = playingManager();
+  await manager.enqueue(voiceChannel(), freshTrack("A"), notify);
+  voiceFakes.players.at(-1)?.stop();
+
+  t.mock.timers.tick(IDLE_TIMEOUT_MS - 1000);
+  await manager.enqueue(voiceChannel(), freshTrack("B"), notify);
+  t.mock.timers.tick(IDLE_TIMEOUT_MS);
+
+  assert.deepEqual(played.map((entry) => entry.track), ["A", "B"]);
+  assert.equal(voiceFakes.connections.at(-1)?.state.status, VoiceConnectionStatus.Ready);
+  assert.equal(manager.getQueue("guild")?.current?.title, "B");
+  manager.leave("guild");
+});
+
+test("a paused track keeps the bot connected", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const { manager, notify } = playingManager();
+  await manager.enqueue(voiceChannel(), freshTrack("A"), notify);
+
+  manager.pause("guild");
+  t.mock.timers.tick(IDLE_TIMEOUT_MS * 2);
+
+  assert.equal(voiceFakes.connections.at(-1)?.state.status, VoiceConnectionStatus.Ready);
+  manager.leave("guild");
+});
+
+test("stop starts the idle wait, and leaving earlier cancels it", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const { manager, notifications, notify } = playingManager();
+  await manager.enqueue(voiceChannel(), freshTrack("A"), notify);
+
+  manager.stop("guild");
+  manager.leave("guild");
+  t.mock.timers.tick(IDLE_TIMEOUT_MS);
+
+  // Only the "Now playing" announcement; no idle message after /leave.
+  assert.equal(notifications.length, 1);
 });
