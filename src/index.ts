@@ -3,6 +3,7 @@ import { registerCommands } from "./commands/index.js";
 import { readTimeouts } from "./infra/config.js";
 import { createLogger } from "./infra/logger.js";
 import { MusicManager } from "./music/music-manager.js";
+import { watchVoicePresence } from "./music/voice-presence.js";
 
 const logger = createLogger("bot");
 
@@ -29,6 +30,7 @@ const client = new Client({
 const musicManager = new MusicManager(undefined, readTimeouts());
 
 registerCommands(client, musicManager);
+watchVoicePresence(client, musicManager);
 
 client.on(Events.Error, (error) => logger.error("Discord client error", undefined, error));
 client.on(Events.Warn, (message) => logger.warn(message));

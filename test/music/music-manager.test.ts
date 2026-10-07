@@ -90,6 +90,7 @@ mock.module("@discordjs/voice", {
 const { MusicManager, prepareUpcomingTrack } = await import("../../src/music/music-manager.js");
 const { DEFAULT_TIMEOUTS } = await import("../../src/infra/config.js");
 const IDLE_TIMEOUT_MS = DEFAULT_TIMEOUTS.idleMs;
+const ALONE_TIMEOUT_MS = DEFAULT_TIMEOUTS.aloneMs;
 
 const FAR_FUTURE = Date.now() + 24 * 60 * 60_000;
 
@@ -485,6 +486,51 @@ test("stop starts the idle wait, and leaving earlier cancels it", async (t) => {
   assert.equal(notifications.length, 1);
 });
 
+test("the bot leaves the voice channel after being alone in it", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const { manager, notifications, notify } = playingManager();
+  await manager.enqueue(voiceChannel(), freshTrack("A"), notify);
+
+  manager.updateListeners("guild", 0);
+  // Later updates while still alone do not restart the wait.
+  t.mock.timers.tick(ALONE_TIMEOUT_MS - 1);
+  manager.updateListeners("guild", 0);
+  assert.equal(voiceFakes.connections.at(-1)?.state.status, VoiceConnectionStatus.Ready);
+
+  t.mock.timers.tick(1);
+  assert.equal(voiceFakes.connections.at(-1)?.state.status, VoiceConnectionStatus.Destroyed);
+  assert.equal(manager.getQueue("guild"), undefined);
+  assert.match(String(notifications.at(-1)), /no one was in it for 3 minutes/);
+});
+
+test("someone joining in time keeps the bot connected", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const { manager, notify } = playingManager();
+  await manager.enqueue(voiceChannel(), freshTrack("A"), notify);
+
+  manager.updateListeners("guild", 0);
+  t.mock.timers.tick(2 * 60_000);
+  manager.updateListeners("guild", 1);
+  t.mock.timers.tick(ALONE_TIMEOUT_MS);
+
+  assert.equal(voiceFakes.connections.at(-1)?.state.status, VoiceConnectionStatus.Ready);
+  assert.equal(manager.getQueue("guild")?.current?.title, "A");
+  manager.leave("guild");
+});
+
+test("leaving earlier cancels the wait, and guilds without a session are ignored", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const { manager, notifications, notify } = playingManager();
+  manager.updateListeners("guild", 0);
+  await manager.enqueue(voiceChannel(), freshTrack("A"), notify);
+
+  manager.updateListeners("guild", 0);
+  manager.leave("guild");
+  t.mock.timers.tick(ALONE_TIMEOUT_MS);
+
+  // Only the "Now playing" announcement.
+  assert.equal(notifications.length, 1);
+});
 
 test("the timeouts given to the manager replace the defaults", async (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });

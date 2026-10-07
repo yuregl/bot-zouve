@@ -34,6 +34,8 @@ interface GuildSession {
   seeking: boolean;
   /** Disconnects the bot when it fires; set while nothing is playing or queued. */
   idleTimer?: NodeJS.Timeout;
+  /** Disconnects the bot when it fires; set while no one but bots is in the voice channel. */
+  aloneTimer?: NodeJS.Timeout;
   notify: Notify;
 }
 
@@ -223,6 +225,40 @@ export class MusicManager {
     return true;
   }
 
+  /**
+   * Starts the wait to leave when no one but bots is in the bot's voice channel, and cancels
+   * it when someone is there again.
+   */
+  updateListeners(guildId: string, listeners: number): void {
+    const session = this.sessions.get(guildId);
+
+    if (!session) {
+      return;
+    }
+
+    if (listeners > 0) {
+      clearTimeout(session.aloneTimer);
+      session.aloneTimer = undefined;
+      return;
+    }
+
+    if (session.aloneTimer) {
+      return;
+    }
+
+    session.aloneTimer = setTimeout(() => {
+      session.aloneTimer = undefined;
+
+      if (this.sessions.get(guildId) !== session) {
+        return;
+      }
+
+      logger.info("Leaving voice channel because no one is listening", { guild: guildId, timeoutMs: this.timeouts.aloneMs });
+      session.notify(`Left the voice channel because no one was in it for ${describeDuration(this.timeouts.aloneMs)}.`);
+      session.connection.destroy();
+    }, this.timeouts.aloneMs);
+  }
+
   async enqueue(channel: VoiceBasedChannel, track: Track, notify: Notify): Promise<EnqueueResult> {
     const session = await this.getOrCreateSession(channel, notify);
     session.notify = notify;
@@ -337,6 +373,7 @@ export class MusicManager {
 
     connection.on(VoiceConnectionStatus.Destroyed, () => {
       logger.info("Voice session closed", context);
+      clearTimeout(session.aloneTimer);
       clearTimeout(session.idleTimer);
       // Remove the session before stopping so the Idle handler does not start the next track.
       this.sessions.delete(guildId);
