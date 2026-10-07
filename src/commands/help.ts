@@ -23,7 +23,7 @@ export const helpCommand: BotCommand = {
           "`/pause` — pauses the current track when playback is active.",
           "`/resume` — resumes the paused track.",
           "`/seek <time>` — jumps to a position in the current track, like `2:13` or `1:02:30`.",
-          "`/skip` — skips the current track and plays the next one in the queue.",
+          "`/skip` — skips the current track; for a track someone else requested, opens a vote that needs more than half of the voice channel.",
           "`/stop` — stops the current track and clears the queue; the bot stays in the voice channel until it has been idle for a while.",
           "`/leave` — disconnects the bot from the voice channel and clears the queue.",
           "`/queue` — shows the current track and the next tracks in the queue.",
