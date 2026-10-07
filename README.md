@@ -9,6 +9,7 @@ A music bot for Discord. The project follows specification-driven development (S
 - [SDD guide](./docs/SDD.md): workflow, structure, and specification criteria.
 - [Initial specification](./docs/specs/0001-discord-music-bot/spec.md): proposed scope and outstanding decisions.
 - [Birthdays](./docs/specs/0002-birthdays/spec.md): `/birthday set`, MongoDB, and Docker.
+- [Birthday content](./docs/specs/0003-birthday-content/spec.md): the server's collection of birthday messages and videos.
 
 ## Status
 
@@ -46,6 +47,15 @@ MongoDB creates the user from `MONGO_USERNAME` and `MONGO_PASSWORD` only on the 
 ## Birthdays
 
 `/birthday set user:@member date:15/03` (or `15/03/1998`; the year is optional) saves a member's birthday in MongoDB. Only members with a role listed in `BIRTHDAY_MANAGER_ROLES` can use it: a comma-separated list of role names (any case) or role IDs, such as `admin,Moderador`. Without `MONGODB_URI`, or while the database is down, the command says birthdays cannot be saved and the music commands keep working.
+
+Members with those roles also manage a collection of birthday messages and YouTube videos for the server, for the bot to use on members' birthdays:
+
+- `/birthday message add text:<message>`: adds a message (up to 500 characters), like `С днём рождения! 🎉`.
+- `/birthday video add link:<YouTube link>`: adds a video; the same video cannot be added twice.
+- `/birthday content list`: shows the collection, numbered; only the member who asks sees it, so it stays a surprise.
+- `/birthday content remove number:<n>`: removes the item with that number in `/birthday content list`.
+
+Any member can run `/birthday list` to see the server's birthdays, the next ones first, with day and month only (never the year).
 
 ## Git hooks
 

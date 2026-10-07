@@ -22,6 +22,7 @@ Let trusted members of a server record the birthdays of other members, so the bo
 - **FR-005 — What is stored:** for each birthday, the server ID, the member's user ID and username, the user ID of who set it, and when it was created and last updated. A date with a year is stored as a date (`birthDate`); a date without a year is stored as `day` and `month`, and a document has only one of the two forms. The username makes the data easier to read; since members can change it, it is refreshed each time the birthday is set, and the user ID remains the reference. The display name is not stored, because members change it freely. A member has at most one birthday per server. Changed by the project owner on 2026-10-07 from separate day, month, and year fields to a date, and to store the username.
 - **FR-006 — Reply:** a successful command replies in the channel with the member and the date (for example "Saved @Ana's birthday: 15/03."), without pinging the member.
 - **FR-007 — Database unavailable:** when the database is not configured or cannot be reached, `/birthday set` replies privately that birthdays cannot be saved right now, and the music commands keep working.
+- **FR-008 — List birthdays:** `/birthday list` shows the server's saved birthdays to everyone in the channel; any member can use it, without a listed role. It lists the next birthdays first, starting with today's, with the day and month (never the year, so no one's age is shown), the member, and how many days are left ("today!", "tomorrow", "in 79 days"). Members are shown without being notified. "Today" follows the `America/Sao_Paulo` time zone. A 29/02 birthday counts as 28/02 in years that are not leap years. With no birthdays saved, it says so; when the list is too long for one message, it ends with how many more there are. Decided by the project owner on 2026-10-07.
 
 ## Non-functional requirements
 
@@ -38,10 +39,11 @@ Let trusted members of a server record the birthdays of other members, so the bo
 - **AC-005:** `/birthday set` for a bot is refused.
 - **AC-006:** with the database stopped, `/birthday set` replies that birthdays cannot be saved right now, and `/play` still works.
 - **AC-007:** `docker compose up -d --build` starts the bot and MongoDB; after `docker compose restart`, birthdays saved before are still there.
+- **AC-008:** on 07/10, with birthdays on 06/10, 07/10, 08/10, and 25/12, a member without a listed role runs `/birthday list` and everyone sees 07/10 marked as today, 08/10 tomorrow, 25/12 in 79 days, and 06/10 in 364 days, with no years and no notifications.
 
 ## Out of scope
 
-- Announcing birthdays, listing, viewing, or removing them (later subcommands of `/birthday`).
+- Announcing birthdays, viewing one member's birthday, or removing birthdays (later subcommands of `/birthday`).
 - Members setting their own birthday.
 - Time zones; the date is a day and month without a time.
 
