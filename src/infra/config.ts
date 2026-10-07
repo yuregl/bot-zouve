@@ -61,3 +61,30 @@ export function describeDuration(ms: number): string {
 
   return parts.join(" ");
 }
+
+/** A time of day, like 09:00. */
+export interface TimeOfDay {
+  hour: number;
+  minute: number;
+}
+
+export const DEFAULT_ANNOUNCE_TIME: TimeOfDay = { hour: 9, minute: 0 };
+
+/**
+ * Reads the time birthdays are announced from `BIRTHDAY_ANNOUNCE_TIME`, written as `HH:MM`;
+ * unset or empty keeps 09:00. Throws when the value is not a valid time.
+ */
+export function readAnnounceTime(env: NodeJS.ProcessEnv = process.env): TimeOfDay {
+  const raw = env.BIRTHDAY_ANNOUNCE_TIME?.trim();
+
+  if (!raw) {
+    return DEFAULT_ANNOUNCE_TIME;
+  }
+
+  const match = raw.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!match) {
+    throw new Error(`BIRTHDAY_ANNOUNCE_TIME must be a time written as HH:MM, like 09:00; got "${raw}".`);
+  }
+
+  return { hour: Number(match[1]), minute: Number(match[2]) };
+}

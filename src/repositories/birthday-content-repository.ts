@@ -9,6 +9,7 @@ export interface StoredContent {
   text?: string | null;
   videoId?: string | null;
   videoUrl?: string | null;
+  unavailable?: boolean | null;
   addedBy: string;
   createdAt: Date;
 }
@@ -19,6 +20,7 @@ export interface BirthdayContentStore {
   /** The server's items, oldest first. */
   findByGuild(guildId: string): Promise<StoredContent[]>;
   deleteOne(filter: object): Promise<{ deletedCount: number }>;
+  updateOne(filter: object, update: object): Promise<unknown>;
 }
 
 /** The store backed by the Mongoose model. */
@@ -26,6 +28,7 @@ export const mongooseContentStore: BirthdayContentStore = {
   create: (document) => BirthdayContentModel.create(document),
   findByGuild: (guildId) => BirthdayContentModel.find({ guildId }).sort({ createdAt: 1, _id: 1 }).lean<StoredContent[]>().exec(),
   deleteOne: (filter) => BirthdayContentModel.deleteOne(filter).exec(),
+  updateOne: (filter, update) => BirthdayContentModel.updateOne(filter, update).exec(),
 };
 
 // MongoDB's error code for a value that breaks a unique index.
@@ -44,7 +47,7 @@ export function toBirthdayContent(stored: StoredContent): BirthdayContent | unde
   }
 
   if (stored.type === "video" && stored.videoId && stored.videoUrl) {
-    return { ...base, type: "video", videoId: stored.videoId, videoUrl: stored.videoUrl };
+    return { ...base, type: "video", videoId: stored.videoId, videoUrl: stored.videoUrl, unavailable: stored.unavailable === true };
   }
 
   return undefined;
@@ -73,6 +76,10 @@ export function createBirthdayContentRepository(store: BirthdayContentStore = mo
     async remove(guildId, id) {
       const result = await store.deleteOne({ _id: id, guildId });
       return result.deletedCount > 0;
+    },
+
+    async setVideoAvailability(guildId, id, available) {
+      await store.updateOne({ _id: id, guildId, type: "video" }, { $set: { unavailable: !available, checkedAt: new Date() } });
     },
   };
 }

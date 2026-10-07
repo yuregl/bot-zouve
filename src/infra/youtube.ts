@@ -533,3 +533,34 @@ export function isStoppedByPlayback(error: unknown, stopRequested: boolean): boo
 function watchUrl(videoId: string): string {
   return `https://www.youtube.com/watch?v=${videoId}`;
 }
+
+export type VideoAvailability = "available" | "unavailable" | "unknown";
+
+// How long to wait for YouTube's oEmbed service before treating the result as unknown.
+const OEMBED_TIMEOUT_MS = 5000;
+
+// oEmbed answers these for videos that are deleted, private, or not embeddable.
+const UNAVAILABLE_STATUSES = new Set([400, 401, 403, 404]);
+
+/**
+ * Asks YouTube's oEmbed service whether a video can be shown in Discord. Server errors,
+ * timeouts, and network failures are "unknown", since they say nothing about the video.
+ */
+export async function checkYouTubeVideo(videoUrl: string, fetchFn: typeof fetch = fetch): Promise<VideoAvailability> {
+  const url = `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(videoUrl)}`;
+
+  try {
+    const response = await fetchFn(url, { signal: AbortSignal.timeout(OEMBED_TIMEOUT_MS) });
+    await response.body?.cancel();
+
+    if (response.ok) {
+      return "available";
+    }
+
+    logger.debug("oEmbed refused the video", { url: videoUrl, status: response.status });
+    return UNAVAILABLE_STATUSES.has(response.status) ? "unavailable" : "unknown";
+  } catch (error) {
+    logger.warn("Could not check the video with oEmbed", { url: videoUrl }, error);
+    return "unknown";
+  }
+}

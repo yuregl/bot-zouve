@@ -32,6 +32,9 @@ function fakeStore(options: { createError?: unknown; documents?: StoredContent[]
       calls.push({ method: "deleteOne", argument: filter });
       return { deletedCount: options.deletedCount ?? 1 };
     },
+    updateOne: async (filter, update) => {
+      calls.push({ method: "updateOne", argument: [filter, update] });
+    },
   };
   return { store, calls };
 }
@@ -57,7 +60,7 @@ test("list returns the server's items in the store's order, skipping incomplete 
   const { store, calls } = fakeStore({
     documents: [
       stored("1", { text: "Feliz aniversário!" }),
-      stored("2", { type: "video", videoId: "dQw4w9WgXcQ", videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" }),
+      stored("2", { type: "video", videoId: "dQw4w9WgXcQ", videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", unavailable: true }),
       stored("3", { type: "video", videoId: null }),
     ],
   });
@@ -66,10 +69,10 @@ test("list returns the server's items in the store's order, skipping incomplete 
 
   assert.deepEqual(calls, [{ method: "findByGuild", argument: "guild" }]);
   assert.deepEqual(
-    items.map((item) => [item.id, item.type]),
+    items.map((item) => [item.id, item.type, item.unavailable]),
     [
-      ["1", "message"],
-      ["2", "video"],
+      ["1", "message", undefined],
+      ["2", "video", true],
     ],
   );
 });
@@ -100,4 +103,18 @@ test("the Mongoose store fails at once while the database is not connected", asy
   await assert.rejects(mongooseContentStore.create({ guildId: "guild" }));
   await assert.rejects(mongooseContentStore.findByGuild("guild"));
   await assert.rejects(mongooseContentStore.deleteOne({ guildId: "guild" }));
+  await assert.rejects(mongooseContentStore.updateOne({ guildId: "guild" }, { $set: {} }));
+});
+
+test("setVideoAvailability records whether a server's video works and when it was checked", async () => {
+  const { store, calls } = fakeStore();
+
+  await createBirthdayContentRepository(store).setVideoAvailability("guild", "abc", false);
+
+  const [call] = calls;
+  assert.ok(call);
+  const [filter, update] = call.argument as [object, { $set: { unavailable: boolean; checkedAt: Date } }];
+  assert.deepEqual(filter, { _id: "abc", guildId: "guild", type: "video" });
+  assert.equal(update.$set.unavailable, true);
+  assert.ok(update.$set.checkedAt instanceof Date);
 });

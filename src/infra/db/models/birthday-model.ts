@@ -12,6 +12,8 @@ const birthdaySchema = new Schema(
     day: { type: Number, min: 1, max: 31 },
     month: { type: Number, min: 1, max: 12 },
     setBy: { type: String, required: true },
+    // The day (YYYY-MM-DD, São Paulo) the member was last congratulated, so it happens once a year.
+    lastAnnouncedOn: { type: String },
   },
   { timestamps: true },
 );

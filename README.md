@@ -10,6 +10,7 @@ A music bot for Discord. The project follows specification-driven development (S
 - [Initial specification](./docs/specs/0001-discord-music-bot/spec.md): proposed scope and outstanding decisions.
 - [Birthdays](./docs/specs/0002-birthdays/spec.md): `/birthday set`, MongoDB, and Docker.
 - [Birthday content](./docs/specs/0003-birthday-content/spec.md): the server's collection of birthday messages and videos.
+- [Birthday announcements](./docs/specs/0004-birthday-announcements/spec.md): congratulating members on their birthday.
 
 ## Status
 
@@ -56,6 +57,8 @@ Members with those roles also manage a collection of birthday messages and YouTu
 - `/birthday content remove number:<n>`: removes the item with that number in `/birthday content list`.
 
 Any member can run `/birthday list` to see the server's birthdays, the next ones first, with day and month only (never the year).
+
+Every day at `BIRTHDAY_ANNOUNCE_TIME` (default `09:00`, São Paulo time), the bot congratulates each member whose birthday it is in `#zouve-music`: one message per member, mentioning them, with a message and a video drawn from the collection. Before sending a video, it checks with YouTube's oEmbed service that the video still works; a deleted, private, or not embeddable video is marked ⚠️ unavailable in `/birthday content list`, and another one is drawn. If the bot is offline at that time, it congratulates when it comes back the same day, and never twice.
 
 ## Git hooks
 

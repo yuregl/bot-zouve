@@ -4,7 +4,12 @@ export type NewBirthdayContent =
   | { guildId: string; addedBy: string; type: "message"; text: string }
   | { guildId: string; addedBy: string; type: "video"; videoId: string; videoUrl: string };
 
-export type BirthdayContent = NewBirthdayContent & { id: string; createdAt: Date };
+export type BirthdayContent = NewBirthdayContent & {
+  id: string;
+  createdAt: Date;
+  /** True for a video that was last found not to work. */
+  unavailable?: boolean;
+};
 
 export type AddContentResult = "added" | "duplicate";
 
@@ -16,6 +21,8 @@ export interface BirthdayContentRepository {
   list(guildId: string): Promise<BirthdayContent[]>;
   /** Removes an item of the server; returns false when it no longer exists. */
   remove(guildId: string, id: string): Promise<boolean>;
+  /** Records whether a video works, as found by checking it. */
+  setVideoAvailability(guildId: string, id: string, available: boolean): Promise<void>;
 }
 
 export type ParsedMessage = { text: string } | { error: string };

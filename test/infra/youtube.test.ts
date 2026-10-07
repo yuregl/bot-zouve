@@ -38,6 +38,7 @@ const {
   streamFirstWorkingAttempt,
   youtubeLinkResolver,
   youtubeSearchResolver,
+  checkYouTubeVideo,
 } = await import("../../src/infra/youtube.js");
 
 type FakeSubprocess = Promise<unknown> & { stdout: Readable; pid: number; kill: () => boolean; killed: boolean };
@@ -515,4 +516,37 @@ test("createYouTubeStream kills yt-dlp when playback stops early", async () => {
   await new Promise((resolve) => setTimeout(resolve, 10));
 
   assert.equal(process.killed, true);
+});
+
+/** A fetch that answers with the given status, or fails, and records the URLs it was asked. */
+function fakeFetch(result: number | Error) {
+  const urls: string[] = [];
+  const fetchFn = (async (url: string) => {
+    urls.push(url);
+    if (result instanceof Error) {
+      throw result;
+    }
+    return new Response(result === 200 ? "{}" : null, { status: result });
+  }) as unknown as typeof fetch;
+  return { fetchFn, urls };
+}
+
+const VIDEO_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+
+test("checkYouTubeVideo asks oEmbed and reports a video that works", async () => {
+  const { fetchFn, urls } = fakeFetch(200);
+
+  assert.equal(await checkYouTubeVideo(VIDEO_URL, fetchFn), "available");
+  assert.deepEqual(urls, [`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(VIDEO_URL)}`]);
+});
+
+test("checkYouTubeVideo reports deleted, private, and not embeddable videos as unavailable", async () => {
+  for (const status of [400, 401, 403, 404]) {
+    assert.equal(await checkYouTubeVideo(VIDEO_URL, fakeFetch(status).fetchFn), "unavailable", String(status));
+  }
+});
+
+test("checkYouTubeVideo reports server errors and network failures as unknown", async () => {
+  assert.equal(await checkYouTubeVideo(VIDEO_URL, fakeFetch(500).fetchFn), "unknown");
+  assert.equal(await checkYouTubeVideo(VIDEO_URL, fakeFetch(new Error("getaddrinfo ENOTFOUND")).fetchFn), "unknown");
 });
