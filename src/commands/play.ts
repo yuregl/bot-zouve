@@ -28,11 +28,11 @@ const MAX_QUERY_LENGTH = 200;
 function buildPlayCommand(name: string) {
   return new SlashCommandBuilder()
     .setName(name)
-    .setDescription("Plays a song name, a YouTube link, or a Spotify track link, or adds it to the queue.")
+    .setDescription("Plays a song name, a YouTube video or playlist link, or a Spotify track link.")
     .addStringOption((option) =>
       option
         .setName("query")
-        .setDescription("Song name to search on YouTube, a YouTube video link, or a Spotify track link.")
+        .setDescription("Song name to search on YouTube, a YouTube video or playlist link, or a Spotify track link.")
         .setRequired(true)
         .setMaxLength(MAX_QUERY_LENGTH),
     );
@@ -148,11 +148,22 @@ export async function executePlay(
   logger.info("Track queued", { guild: guild.name, track: track.title, url: track.url, count: tracks.length, ...result });
 
   const label = `**${track.title}** (${formatDuration(track.durationSeconds)})`;
-  const others = tracks.length > 1 ? ` and ${tracks.length - 1} more` : "";
+
+  if (tracks.length === 1) {
+    await interaction.editReply(
+      result.startedPlaying
+        ? `Added to the queue: ${label} — starting now.`
+        : `Added to the queue at position ${result.position}: ${label}`,
+    );
+    return;
+  }
+
+  const total = formatDuration(tracks.reduce((sum, queued) => sum + queued.durationSeconds, 0));
+  const added = `Added ${tracks.length} tracks to the queue (${total})`;
   await interaction.editReply(
     result.startedPlaying
-      ? `Added to the queue: ${label}${others} — starting now.`
-      : `Added to the queue at position ${result.position}: ${label}${others}`,
+      ? `${added} — starting now with ${label}.`
+      : `${added} from position ${result.position}, starting with ${label}.`,
   );
 }
 

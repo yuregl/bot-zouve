@@ -7,6 +7,7 @@ import { createLogger } from "./logger.js";
 const logger = createLogger("youtube");
 
 const VIDEO_ID_PATTERN = /^[\w-]{11}$/;
+const LIST_ID_PATTERN = /^[\w-]+$/;
 const YOUTUBE_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com"]);
 
 // Opus in WebM can be sent to Discord without re-encoding, so FFmpeg is not needed.
@@ -23,12 +24,15 @@ const EXPIRY_MARGIN_MS = 60_000;
 // download (HTTP 403) that succeeds when retried.
 const YT_DLP_ATTEMPTS = 2;
 
-const baseFlags = {
-  noPlaylist: true,
+const commonFlags = {
   noWarnings: true,
   // yt-dlp needs a JavaScript runtime to extract YouTube formats; reuse the bot's Node.js.
   jsRuntimes: `node:${process.execPath}`,
 } as const;
+
+// youtube-dl-exec turns `noPlaylist: false` into an invalid `--no-no-playlist`, so playlist
+// requests use commonFlags instead of overriding this.
+const baseFlags = { ...commonFlags, noPlaylist: true } as const;
 
 export function getYouTubeVideoId(query: string): string | undefined {
   let url: URL;
@@ -54,6 +58,38 @@ export function getYouTubeVideoId(query: string): string | undefined {
 
 export function isYouTubeUrl(query: string): boolean {
   return getYouTubeVideoId(query) !== undefined;
+}
+
+export interface YouTubeListLink {
+  listId: string;
+  /** The video the link opens, where the queue starts. */
+  videoId?: string;
+  /** The 1-based position from the link's `index` parameter. */
+  index?: number;
+}
+
+/** Reads the playlist or Mix from a YouTube link's `list` parameter. */
+export function getYouTubeList(query: string): YouTubeListLink | undefined {
+  let url: URL;
+  try {
+    url = new URL(query.trim());
+  } catch {
+    return undefined;
+  }
+
+  if (url.hostname !== "youtu.be" && !YOUTUBE_HOSTS.has(url.hostname)) {
+    return undefined;
+  }
+
+  const listId = url.searchParams.get("list");
+  const videoId = getYouTubeVideoId(query);
+
+  if (!listId || !LIST_ID_PATTERN.test(listId) || (!videoId && url.pathname !== "/playlist")) {
+    return undefined;
+  }
+
+  const index = Number(url.searchParams.get("index"));
+  return { listId, videoId, index: Number.isSafeInteger(index) && index > 0 ? index : undefined };
 }
 
 async function fetchVideoInfo(url: string) {
@@ -180,12 +216,90 @@ export async function searchYouTubeByDuration(
   return resolveYouTubeVideo(match.id, requestedBy);
 }
 
-/** Plays a link to a single YouTube video. */
+interface ListEntry {
+  id?: unknown;
+  title?: unknown;
+  duration?: number | null;
+  live_status?: string | null;
+}
+
+/** The most tracks one playlist or Mix link adds to the queue. */
+export const MAX_LIST_TRACKS = 50;
+
+// Titles yt-dlp gives videos in a list that can no longer be played.
+const UNAVAILABLE_TITLES = new Set(["[Private video]", "[Deleted video]"]);
+
+/**
+ * Queues up to MAX_LIST_TRACKS videos of a YouTube playlist or Mix, starting at the video the link opens. The first track
+ * gets a direct audio link so it starts quickly; the others get theirs while earlier ones play.
+ */
+export async function resolveYouTubeList(link: YouTubeListLink, requestedBy: string): Promise<Track[]> {
+  const listUrl = link.videoId
+    ? `https://www.youtube.com/watch?v=${link.videoId}&list=${link.listId}`
+    : `https://www.youtube.com/playlist?list=${link.listId}`;
+  logger.debug("Fetching playlist", { listUrl });
+
+  let entries: ListEntry[];
+  try {
+    const result = await youtubeDl(listUrl, {
+      ...commonFlags,
+      yesPlaylist: true,
+      dumpSingleJson: true,
+      flatPlaylist: true,
+    });
+    entries = typeof result === "string" ? [] : ((result as { entries?: ListEntry[] }).entries ?? []);
+  } catch (error) {
+    if (!link.videoId) {
+      throw error;
+    }
+    logger.warn("Could not read the playlist; playing only the linked video", { listUrl }, error);
+    return [await resolveYouTubeVideo(link.videoId, requestedBy)];
+  }
+
+  const playable = entries.filter(
+    (entry): entry is ListEntry & { id: string } =>
+      typeof entry.id === "string" &&
+      VIDEO_ID_PATTERN.test(entry.id) &&
+      entry.live_status !== "is_live" &&
+      entry.live_status !== "is_upcoming" &&
+      !UNAVAILABLE_TITLES.has(String(entry.title)),
+  );
+
+  const linkedPosition = playable.findIndex((entry) => entry.id === link.videoId);
+  const start =
+    linkedPosition >= 0 ? linkedPosition : link.index !== undefined && link.index <= playable.length ? link.index - 1 : 0;
+  const [first, ...rest] = playable.slice(start, start + MAX_LIST_TRACKS);
+
+  if (!first) {
+    if (link.videoId) {
+      return [await resolveYouTubeVideo(link.videoId, requestedBy)];
+    }
+    throw new UnsupportedTrackError("This playlist has no playable videos.");
+  }
+
+  return [
+    await resolveYouTubeVideo(first.id, requestedBy),
+    ...rest.map((entry) => ({
+      title: typeof entry.title === "string" ? entry.title : watchUrl(entry.id),
+      url: watchUrl(entry.id),
+      durationSeconds: entry.duration ?? 0,
+      requestedBy,
+    })),
+  ];
+}
+
+/** Plays a link to a YouTube video, playlist, or Mix. */
 export const youtubeLinkResolver: LinkResolver = {
-  linkDescription: "a single YouTube video",
-  failureMessage: "Could not load this video. Check that the link is public and available.",
-  canResolve: (url) => isYouTubeUrl(url.href),
+  linkDescription: "a YouTube video or playlist",
+  failureMessage: "Could not load this link. Check that the video or playlist is public and available.",
+  canResolve: (url) => isYouTubeUrl(url.href) || getYouTubeList(url.href) !== undefined,
   async resolve(query, requestedBy) {
+    const list = getYouTubeList(query);
+
+    if (list) {
+      return resolveYouTubeList(list, requestedBy);
+    }
+
     const videoId = getYouTubeVideoId(query);
 
     if (!videoId) {
