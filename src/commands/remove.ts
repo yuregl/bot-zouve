@@ -11,12 +11,18 @@ const logger = createLogger("remove");
 export const removeCommand: BotCommand = {
   data: new SlashCommandBuilder()
     .setName("remove")
-    .setDescription("Removes a track from the queue by its number in /queue.")
+    .setDescription("Removes a track, or a range of tracks, from the queue by their numbers in /queue.")
     .addIntegerOption((option) =>
       option
-        .setName("position")
-        .setDescription("The track's number under 'Up next' in /queue.")
+        .setName("start")
+        .setDescription("The number under 'Up next' in /queue of the first track to remove.")
         .setRequired(true)
+        .setMinValue(1),
+    )
+    .addIntegerOption((option) =>
+      option
+        .setName("end")
+        .setDescription("The number of the last track to remove; leave empty to remove only one track.")
         .setMinValue(1),
     ),
   async execute(interaction, musicManager) {
@@ -55,8 +61,9 @@ export const removeCommand: BotCommand = {
       return;
     }
 
-    const position = interaction.options.getInteger("position", true);
-    const outcome = musicManager.remove(guildId, position);
+    const start = interaction.options.getInteger("start", true);
+    const end = interaction.options.getInteger("end") ?? start;
+    const outcome = musicManager.remove(guildId, start, end);
 
     if (outcome.status === "empty") {
       await interaction.reply({
@@ -67,14 +74,25 @@ export const removeCommand: BotCommand = {
     }
 
     if (outcome.status === "out-of-range") {
-      await interaction.reply({
-        content: `There is no track ${position} in the queue; it has ${outcome.size} ${outcome.size === 1 ? "track" : "tracks"}. Use \`/queue\` to see the numbers.`,
-        flags: MessageFlags.Ephemeral,
-      });
+      const size = `${outcome.size} ${outcome.size === 1 ? "track" : "tracks"}`;
+      let content: string;
+      if (end < start) {
+        content = `The end (${end}) must not come before the start (${start}).`;
+      } else if (start === end) {
+        content = `There is no track ${start} in the queue; it has ${size}. Use \`/queue\` to see the numbers.`;
+      } else {
+        content = `Tracks ${start} to ${end} are not all in the queue; it has ${size}. Use \`/queue\` to see the numbers.`;
+      }
+      await interaction.reply({ content, flags: MessageFlags.Ephemeral });
       return;
     }
 
-    logger.info("Remove requested", { guild: guild.name, user: interaction.user.tag, position, track: outcome.track.title });
-    await interaction.reply(`Removed **${outcome.track.title}** from the queue.`);
+    const [first] = outcome.tracks;
+    logger.info("Remove requested", { guild: guild.name, user: interaction.user.tag, start, end, count: outcome.tracks.length });
+    await interaction.reply(
+      outcome.tracks.length === 1 && first
+        ? `Removed **${first.title}** from the queue.`
+        : `Removed ${outcome.tracks.length} tracks (${start} to ${end}) from the queue.`,
+    );
   },
 };

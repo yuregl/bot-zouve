@@ -22,6 +22,7 @@ mock.module("youtube-dl-exec", { namedExports: { youtubeDl: fakeYoutubeDl } });
 const {
   createYouTubeStream,
   getAudioSource,
+  getYouTubeList,
   getYouTubeVideoId,
   isStoppedByPlayback,
   isYouTubeUrl,
@@ -29,6 +30,8 @@ const {
   parseContentRangeSize,
   pickClosestDuration,
   refreshAudioSource,
+  MAX_LIST_TRACKS,
+  resolveYouTubeList,
   resolveYouTubeVideo,
   searchYouTube,
   searchYouTubeByDuration,
@@ -154,11 +157,130 @@ function accepts(link: string): boolean {
   return youtubeLinkResolver.canResolve(new URL(link));
 }
 
-test("youtubeLinkResolver accepts links to a single YouTube video", () => {
+test("youtubeLinkResolver accepts links to YouTube videos, playlists, and Mixes", () => {
   assert.equal(accepts("https://youtu.be/dQw4w9WgXcQ"), true);
   assert.equal(accepts("https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RD1"), true);
-  assert.equal(accepts("https://www.youtube.com/playlist?list=RDRY3B_XXmTYU"), false);
+  assert.equal(accepts("https://www.youtube.com/playlist?list=PLabc"), true);
+  assert.equal(accepts("https://www.youtube.com/feed/history?list=PLabc"), false);
   assert.equal(accepts("https://open.spotify.com/track/123"), false);
+});
+
+test("getYouTubeList reads the list, the linked video, and the index", () => {
+  assert.deepEqual(
+    getYouTubeList("https://www.youtube.com/watch?v=Y8CWcaXogIQ&list=RDGMEM2VCIgaiSqOfVzBAjPJm-agVMY8CWcaXogIQ&start_radio=1"),
+    { listId: "RDGMEM2VCIgaiSqOfVzBAjPJm-agVMY8CWcaXogIQ", videoId: "Y8CWcaXogIQ", index: undefined },
+  );
+  assert.deepEqual(getYouTubeList("https://youtu.be/dQw4w9WgXcQ?list=PLabc&index=3"), {
+    listId: "PLabc",
+    videoId: "dQw4w9WgXcQ",
+    index: 3,
+  });
+  assert.deepEqual(getYouTubeList("https://www.youtube.com/playlist?list=PLabc&index=0"), {
+    listId: "PLabc",
+    videoId: undefined,
+    index: undefined,
+  });
+});
+
+test("getYouTubeList ignores links without a valid list", () => {
+  assert.equal(getYouTubeList("https://www.youtube.com/watch?v=dQw4w9WgXcQ"), undefined);
+  assert.equal(getYouTubeList("https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=bad%20list"), undefined);
+  assert.equal(getYouTubeList("https://example.com/playlist?list=PLabc"), undefined);
+  assert.equal(getYouTubeList("numb"), undefined);
+});
+
+/** A flat playlist entry as yt-dlp lists it. */
+function entry(id: string, extra: Record<string, unknown> = {}) {
+  return { id, title: `Video ${id}`, duration: 100, ...extra };
+}
+
+const LIST_ENTRIES = [
+  entry("video000001"),
+  entry("private0001", { title: "[Private video]", duration: null }),
+  entry("video000002"),
+  entry("livestream1", { live_status: "is_live" }),
+  entry("video000003"),
+  entry("bad"),
+];
+
+test("resolveYouTubeList queues the list from the linked video, skipping unplayable entries", async () => {
+  ytDlpJson = (url) => (url.includes("list=") ? { entries: LIST_ENTRIES } : videoInfo({ id: "video000002" }));
+
+  const tracks = await resolveYouTubeList({ listId: "RD1", videoId: "video000002" }, "user");
+
+  const listCall = ytDlpCalls.at(-2);
+  assert.equal(listCall?.url, "https://www.youtube.com/watch?v=video000002&list=RD1");
+  assert.equal(listCall?.flags.yesPlaylist, true);
+  assert.equal("noPlaylist" in (listCall?.flags ?? {}), false);
+  assert.deepEqual(
+    tracks.map((queued) => queued.url),
+    ["https://www.youtube.com/watch?v=video000002", "https://www.youtube.com/watch?v=video000003"],
+  );
+  // The first track is fully resolved, with a direct audio link; the rest get theirs later.
+  assert.equal(tracks[0]?.audio?.url, DIRECT_URL);
+  assert.deepEqual(tracks[1], {
+    title: "Video video000003",
+    url: "https://www.youtube.com/watch?v=video000003",
+    durationSeconds: 100,
+    requestedBy: "user",
+  });
+});
+
+/** The ids of the tracks queued after the first one. */
+function listed(tracks: Track[]): string[] {
+  return tracks.slice(1).map((queued) => queued.url.slice(-11));
+}
+
+test("resolveYouTubeList starts at the index or the beginning when the video is not in the list", async () => {
+  ytDlpJson = (url) => (url.includes("list=") ? { entries: LIST_ENTRIES } : videoInfo());
+
+  assert.deepEqual(listed(await resolveYouTubeList({ listId: "PL1", videoId: "notinlist00", index: 2 }, "user")), [
+    "video000003",
+  ]);
+  assert.deepEqual(listed(await resolveYouTubeList({ listId: "PL1", index: 9 }, "user")), ["video000002", "video000003"]);
+  assert.equal(ytDlpCalls.at(-2)?.url, "https://www.youtube.com/playlist?list=PL1");
+});
+
+test("resolveYouTubeList plays only the linked video when the list is unusable", async () => {
+  ytDlpJson = (url) => {
+    if (url.includes("list=")) {
+      throw new Error("This playlist does not exist");
+    }
+    return videoInfo();
+  };
+  assert.equal((await resolveYouTubeList({ listId: "RD1", videoId: "dQw4w9WgXcQ" }, "user")).length, 1);
+
+  ytDlpJson = (url) => (url.includes("list=") ? "not json" : videoInfo());
+  assert.equal((await resolveYouTubeList({ listId: "RD1", videoId: "dQw4w9WgXcQ" }, "user")).length, 1);
+});
+
+test("resolveYouTubeList refuses playlists that cannot be read or have nothing to play", async () => {
+  ytDlpJson = () => ({ entries: [entry("private0001", { title: "[Deleted video]" })] });
+  await assert.rejects(resolveYouTubeList({ listId: "PL1" }, "user"), /no playable videos/);
+
+  ytDlpJson = () => {
+    throw new Error("This playlist does not exist");
+  };
+  await assert.rejects(resolveYouTubeList({ listId: "PL1" }, "user"), /does not exist/);
+});
+
+test("resolveYouTubeList queues at most 50 tracks from where the list starts", async () => {
+  const many = Array.from({ length: 80 }, (_, i) => entry(`video${String(i).padStart(6, "0")}`));
+  ytDlpJson = (url) => (url.includes("list=") ? { entries: many } : videoInfo());
+
+  const tracks = await resolveYouTubeList({ listId: "RD1", videoId: "video000010" }, "user");
+
+  assert.equal(MAX_LIST_TRACKS, 50);
+  assert.equal(tracks.length, 50);
+  assert.equal(tracks.at(-1)?.url, "https://www.youtube.com/watch?v=video000059");
+});
+
+test("youtubeLinkResolver resolves playlist links", async () => {
+  ytDlpJson = (url) => (url.includes("list=") ? { entries: LIST_ENTRIES } : videoInfo());
+
+  const tracks = await youtubeLinkResolver.resolve("https://www.youtube.com/playlist?list=PL1", "user");
+
+  assert.equal(tracks.length, 3);
 });
 
 test("isStoppedByPlayback accepts yt-dlp killed after playback stopped", () => {

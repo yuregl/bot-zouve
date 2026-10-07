@@ -17,11 +17,9 @@ import { formatDuration, type Track } from "./track.js";
 import { createSeekedOpusStream } from "../infra/opus.js";
 import { createYouTubeStream, needsFreshAudio, refreshAudioSource } from "../infra/youtube.js";
 import { createLogger } from "../infra/logger.js";
+import { DEFAULT_TIMEOUTS, describeDuration, type Timeouts } from "../infra/config.js";
 
 const logger = createLogger("music");
-
-/** How long the bot stays in the voice channel with nothing playing or queued. */
-export const IDLE_TIMEOUT_MS = 5 * 60_000;
 
 type Notify = (message: string | MessageCreateOptions) => void;
 
@@ -36,6 +34,8 @@ interface GuildSession {
   seeking: boolean;
   /** Disconnects the bot when it fires; set while nothing is playing or queued. */
   idleTimer?: NodeJS.Timeout;
+  /** Disconnects the bot when it fires; set while no one but bots is in the voice channel. */
+  aloneTimer?: NodeJS.Timeout;
   notify: Notify;
 }
 
@@ -50,7 +50,7 @@ export interface QueueSnapshot {
 export type ResourceFactory = (track: Track, offsetSeconds: number) => AudioResource;
 
 export type RemoveOutcome =
-  | { status: "removed"; track: Track }
+  | { status: "removed"; tracks: Track[] }
   | { status: "empty" }
   | { status: "out-of-range"; size: number };
 
@@ -73,8 +73,14 @@ export class MusicManager {
   private readonly sessions = new Map<string, GuildSession>();
   private readonly pendingSessions = new Map<string, Promise<GuildSession>>();
 
-  /** `createResource` streams a track from a position; tests replace it to avoid downloading audio. */
-  constructor(private readonly createResource: ResourceFactory = createTrackResource) {}
+  /**
+   * `createResource` streams a track from a position; tests replace it to avoid downloading audio.
+   * `timeouts` come from the environment (see readTimeouts).
+   */
+  constructor(
+    private readonly createResource: ResourceFactory = createTrackResource,
+    readonly timeouts: Timeouts = DEFAULT_TIMEOUTS,
+  ) {}
 
   getAudioPlayer(guildId: string): AudioPlayer | undefined {
     return this.sessions.get(guildId)?.player;
@@ -153,10 +159,10 @@ export class MusicManager {
   }
 
   /**
-   * Removes the track at a 1-based position among the upcoming tracks, as numbered by /queue.
-   * The current track is not part of that numbering.
+   * Removes the upcoming tracks from `start` through `end` (1-based and inclusive), as numbered
+   * by /queue; the current track is not part of that numbering. Without `end`, removes one track.
    */
-  remove(guildId: string, position: number): RemoveOutcome {
+  remove(guildId: string, start: number, end = start): RemoveOutcome {
     const session = this.sessions.get(guildId);
     const size = session?.queue.length ?? 0;
 
@@ -164,19 +170,19 @@ export class MusicManager {
       return { status: "empty" };
     }
 
-    if (!Number.isInteger(position) || position < 1 || position > size) {
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < start || end > size) {
       return { status: "out-of-range", size };
     }
 
-    const [track] = session.queue.splice(position - 1, 1);
+    const tracks = session.queue.splice(start - 1, end - start + 1);
 
-    // The track now next may have an older link than the one that was removed.
-    if (position === 1 && session.current) {
+    // The track now next may have an older link than the ones that were removed.
+    if (start === 1 && session.current) {
       prepareUpcomingTrack(session.queue[0], session.current);
     }
 
-    logger.info("Track removed from the queue", { guild: guildId, track: track?.title, position });
-    return track ? { status: "removed", track } : { status: "out-of-range", size };
+    logger.info("Tracks removed from the queue", { guild: guildId, start, end, count: tracks.length });
+    return { status: "removed", tracks };
   }
 
   /** Ends the current track so the next queued track starts; returns undefined when nothing is playing. */
@@ -217,6 +223,40 @@ export class MusicManager {
 
     session.connection.destroy();
     return true;
+  }
+
+  /**
+   * Starts the wait to leave when no one but bots is in the bot's voice channel, and cancels
+   * it when someone is there again.
+   */
+  updateListeners(guildId: string, listeners: number): void {
+    const session = this.sessions.get(guildId);
+
+    if (!session) {
+      return;
+    }
+
+    if (listeners > 0) {
+      clearTimeout(session.aloneTimer);
+      session.aloneTimer = undefined;
+      return;
+    }
+
+    if (session.aloneTimer) {
+      return;
+    }
+
+    session.aloneTimer = setTimeout(() => {
+      session.aloneTimer = undefined;
+
+      if (this.sessions.get(guildId) !== session) {
+        return;
+      }
+
+      logger.info("Leaving voice channel because no one is listening", { guild: guildId, timeoutMs: this.timeouts.aloneMs });
+      session.notify(`Left the voice channel because no one was in it for ${describeDuration(this.timeouts.aloneMs)}.`);
+      session.connection.destroy();
+    }, this.timeouts.aloneMs);
   }
 
   async enqueue(channel: VoiceBasedChannel, track: Track, notify: Notify): Promise<EnqueueResult> {
@@ -333,6 +373,7 @@ export class MusicManager {
 
     connection.on(VoiceConnectionStatus.Destroyed, () => {
       logger.info("Voice session closed", context);
+      clearTimeout(session.aloneTimer);
       clearTimeout(session.idleTimer);
       // Remove the session before stopping so the Idle handler does not start the next track.
       this.sessions.delete(guildId);
@@ -381,11 +422,10 @@ export class MusicManager {
         return;
       }
 
-      const minutes = IDLE_TIMEOUT_MS / 60_000;
-      logger.info("Leaving voice channel after being idle", { guild: guildId, minutes });
-      session.notify(`Left the voice channel after ${minutes} minutes without music.`);
+      logger.info("Leaving voice channel after being idle", { guild: guildId, timeoutMs: this.timeouts.idleMs });
+      session.notify(`Left the voice channel after ${describeDuration(this.timeouts.idleMs)} without music.`);
       session.connection.destroy();
-    }, IDLE_TIMEOUT_MS);
+    }, this.timeouts.idleMs);
   }
 }
 

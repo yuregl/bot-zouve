@@ -135,7 +135,18 @@ test("/play queues every track a resolver returns", async () => {
   await run();
 
   assert.deepEqual(enqueued, ["A", "B", "C"]);
-  assert.match(edits[0] ?? "", /\*\*A\*\* \(3:05\) and 2 more — starting now/);
+  assert.deepEqual(edits, ["Added 3 tracks to the queue (9:15) — starting now with **A** (3:05)."]);
+});
+
+test("/play summarizes a playlist added behind other tracks", async () => {
+  const { run, edits } = setup({
+    match: { resolver: resolverReturning([track("A"), track("B")]), query: "playlist" },
+    enqueue: { startedPlaying: false, position: 4 },
+  });
+
+  await run();
+
+  assert.deepEqual(edits, ["Added 2 tracks to the queue (6:10) from position 4, starting with **A** (3:05)."]);
 });
 
 test("/play shows the resolver's reason when a request is refused", async () => {
