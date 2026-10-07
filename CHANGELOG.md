@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.0](https://github.com/yuregl/bot-zouve/compare/v1.7.0...v1.8.0) (2026-10-07)
+
+
+### Features
+
+* save member birthdays in MongoDB with /birthday set ([dae923c](https://github.com/yuregl/bot-zouve/commit/dae923c5e2523991350f14bef4f6f0871f5f0d3b))
+* save member birthdays in MongoDB with /birthday set ([0640aa1](https://github.com/yuregl/bot-zouve/commit/0640aa11fbfd02a47674a295fe5eae684c75c158))
+
 ## [1.7.0](https://github.com/yuregl/bot-zouve/compare/v1.6.0...v1.7.0) (2026-10-07)
 
 
