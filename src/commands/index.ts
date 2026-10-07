@@ -7,6 +7,7 @@ import {
 } from "discord.js";
 import type { BotCommand } from "./command.js";
 import type { MusicManager } from "../music/music-manager.js";
+import { birthdayCommand } from "./birthday.js";
 import { helpCommand } from "./help.js";
 import { leaveCommand } from "./leave.js";
 import { pauseCommand } from "./pause.js";
@@ -23,6 +24,7 @@ import { createLogger } from "../infra/logger.js";
 const logger = createLogger("commands");
 
 export const commands = new Collection<string, BotCommand>([
+  [birthdayCommand.data.name, birthdayCommand],
   [helpCommand.data.name, helpCommand],
   [leaveCommand.data.name, leaveCommand],
   [pauseCommand.data.name, pauseCommand],

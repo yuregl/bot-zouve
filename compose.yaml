@@ -1,0 +1,37 @@
+# Runs the bot and the MongoDB that stores birthdays. Usage: docker compose up -d --build
+services:
+  bot:
+    build: .
+    env_file: .env
+    environment:
+      # Points the bot at the mongo service, replacing the localhost URI used by `npm run dev`.
+      MONGODB_URI: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongo:27017/zouve?authSource=admin
+    depends_on:
+      mongo:
+        condition: service_healthy
+    volumes:
+      - bot-logs:/app/logs
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:8
+    environment:
+      # Creates the root user on the first start, when the data volume is empty.
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:?Set MONGO_USERNAME in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?Set MONGO_PASSWORD in .env}
+    # Only this computer can connect, for `npm run dev` and database tools.
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
+  bot-logs:

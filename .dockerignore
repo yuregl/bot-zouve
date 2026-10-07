@@ -1,0 +1,17 @@
+# node_modules holds binaries for the host (yt-dlp.exe on Windows); the image installs its own.
+node_modules
+dist
+logs
+coverage
+
+# Secrets stay out of the image; Docker Compose passes them as variables.
+.env
+.env.*
+
+.git
+.github
+.vscode
+.claude
+docs
+test
+*.md

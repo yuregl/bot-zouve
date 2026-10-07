@@ -27,6 +27,7 @@ export const helpCommand: BotCommand = {
           "`/stop` — stops the current track and clears the queue; the bot stays in the voice channel until it has been idle for a while.",
           "`/leave` — disconnects the bot from the voice channel and clears the queue.",
           "`/queue` — shows the current track and the next tracks in the queue.",
+          "`/birthday set <member> <DD/MM[/YYYY]>` — saves a member's birthday (requires an allowed role; works in any channel).",
           "`/remove <start> [end]` — removes a track, or the tracks from `start` to `end`, by their numbers in `/queue`.",
         ].join("\n"),
       )

@@ -31,7 +31,7 @@ test("registerCommands registers every slash command with Discord when the bot i
 
   assert.deepEqual(
     new Set(registered.map((command) => command.name)),
-    new Set(["help", "leave", "p", "pause", "play", "queue", "remove", "resume", "seek", "setup", "skip", "stop"]),
+    new Set(["birthday", "help", "leave", "p", "pause", "play", "queue", "remove", "resume", "seek", "setup", "skip", "stop"]),
   );
 });
 

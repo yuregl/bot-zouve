@@ -8,10 +8,11 @@ A music bot for Discord. The project follows specification-driven development (S
 - [CLAUDE.md](./CLAUDE.md): Claude Code entry point; supplements `AGENTS.md`.
 - [SDD guide](./docs/SDD.md): workflow, structure, and specification criteria.
 - [Initial specification](./docs/specs/0001-discord-music-bot/spec.md): proposed scope and outstanding decisions.
+- [Birthdays](./docs/specs/0002-birthdays/spec.md): `/birthday set`, MongoDB, and Docker.
 
 ## Status
 
-TypeScript, `discord.js`, and `@discordjs/voice` have been selected. `/help`, `/setup`, `/play` (alias `/p`, song names searched on YouTube, YouTube video links, or Spotify track links played from YouTube, via `yt-dlp`), `/pause`, `/resume`, `/seek`, `/skip`, `/stop`, `/leave`, `/queue`, and `/remove` are available. The deployment approach remains undecided.
+TypeScript, `discord.js`, and `@discordjs/voice` have been selected. `/help`, `/setup`, `/play` (alias `/p`, song names searched on YouTube, YouTube video links, or Spotify track links played from YouTube, via `yt-dlp`), `/pause`, `/resume`, `/seek`, `/skip`, `/stop`, `/leave`, `/queue`, `/remove`, and `/birthday set` are available. The bot and MongoDB run with Docker Compose; where they are hosted remains undecided.
 
 ## Development
 
@@ -27,9 +28,24 @@ TypeScript, `discord.js`, and `@discordjs/voice` have been selected. `/help`, `/
 
 Never share or commit the `.env` file.
 
-The global `/help`, `/setup`, `/play`, `/p`, `/pause`, `/resume`, `/seek`, `/skip`, `/stop`, `/leave`, `/queue`, and `/remove` commands are registered when the bot starts. They may take a few minutes to become available in Discord.
+The global `/help`, `/setup`, `/play`, `/p`, `/pause`, `/resume`, `/seek`, `/skip`, `/stop`, `/leave`, `/queue`, `/remove`, and `/birthday` commands are registered when the bot starts. They may take a few minutes to become available in Discord.
 
 After inviting the bot, an admin runs `/setup` to create the `#zouve-music` channel; music commands only work there. Renaming that channel breaks the link, since the bot finds it by name.
+
+## Docker
+
+Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) (WSL 2 backend on Windows). `compose.yaml` runs two containers: the bot, built from the `Dockerfile`, and MongoDB, whose data is kept in the `mongo-data` volume.
+
+1. Copy `.env.example` to `.env` and set `DISCORD_TOKEN`, `MONGO_USERNAME`, `MONGO_PASSWORD`, and `BIRTHDAY_MANAGER_ROLES`. Use a password with letters and numbers only, since it goes into a connection string.
+2. `docker compose up -d --build`: build the bot and start both containers in the background.
+3. `docker compose logs -f bot`: follow the bot's logs.
+4. `docker compose down`: stop the containers; the data stays in the volume (`docker compose down -v` deletes it).
+
+MongoDB creates the user from `MONGO_USERNAME` and `MONGO_PASSWORD` only on the first start, when the volume is empty. Its port is published on `127.0.0.1:27017`, so `npm run dev` on the same computer can use it through `MONGODB_URI`. Do not run the bot in Docker and with `npm run dev` at the same time with the same token: both would answer every command.
+
+## Birthdays
+
+`/birthday set user:@member date:15/03` (or `15/03/1998`; the year is optional) saves a member's birthday in MongoDB. Only members with a role listed in `BIRTHDAY_MANAGER_ROLES` can use it: a comma-separated list of role names (any case) or role IDs, such as `admin,Moderador`. Without `MONGODB_URI`, or while the database is down, the command says birthdays cannot be saved and the music commands keep working.
 
 ## Git hooks
 
