@@ -76,6 +76,16 @@ Optional variables in `.env`, in seconds; when unset, the defaults apply. The bo
 - `ALONE_TIMEOUT_SECONDS` (default 180): time with no one but bots in the voice channel before the bot leaves it.
 - `SKIP_VOTE_TIMEOUT_SECONDS` (default 60): how long a vote to skip stays open.
 
+## YouTube cookies
+
+YouTube sometimes refuses the bot with "Sign in to confirm you're not a bot", mostly on server IPs; every `/play` then fails, Spotify links included, since their audio also comes from YouTube. To get past it, give `yt-dlp` the cookies of a YouTube session:
+
+1. Sign in to YouTube with a throwaway Google account (YouTube may restrict the account, and the cookies give access to it).
+2. Export the YouTube cookies in Netscape format, as described in the [yt-dlp wiki](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies), and save them as `cookies/youtube.txt` in the project folder (ignored by Git and Docker).
+3. Set `YOUTUBE_COOKIES_FILE=cookies/youtube.txt` in `.env` and restart the bot (`docker compose up -d`).
+
+Docker Compose mounts the `cookies/` folder read-only in the container, so the same path works with Docker and with `npm run dev`. The bot logs "YouTube cookies loaded" at startup and refuses to start when the file cannot be read. Cookies expire: when the error comes back, export them again and restart the bot.
+
 ## Logs
 
 The bot logs to the terminal and appends to `logs/bot.log` (ignored by Git). Each line has a UTC timestamp, level, module, message, and JSON context; errors include the stack trace, the underlying cause, and `yt-dlp` error output.

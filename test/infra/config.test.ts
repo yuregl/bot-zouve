@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DEFAULT_TIMEOUTS, describeDuration, readAnnounceTime, readTimeouts } from "../../src/infra/config.js";
+import { DEFAULT_TIMEOUTS, describeDuration, readAnnounceTime, readTimeouts, readYouTubeCookiesFile } from "../../src/infra/config.js";
 
 test("readTimeouts keeps the defaults when the variables are unset or empty", () => {
   assert.deepEqual(readTimeouts({}), DEFAULT_TIMEOUTS);
@@ -43,4 +43,10 @@ test("readAnnounceTime refuses other formats and impossible times", () => {
   for (const value of ["9:00", "24:00", "09:60", "09h", "nine"]) {
     assert.throws(() => readAnnounceTime({ BIRTHDAY_ANNOUNCE_TIME: value }), /BIRTHDAY_ANNOUNCE_TIME must be a time written as HH:MM/, value);
   }
+});
+
+test("readYouTubeCookiesFile reads the path, and nothing when unset or empty", () => {
+  assert.equal(readYouTubeCookiesFile({ YOUTUBE_COOKIES_FILE: " cookies/youtube.txt " }), "cookies/youtube.txt");
+  assert.equal(readYouTubeCookiesFile({ YOUTUBE_COOKIES_FILE: " " }), undefined);
+  assert.equal(readYouTubeCookiesFile({}), undefined);
 });

@@ -88,3 +88,8 @@ export function readAnnounceTime(env: NodeJS.ProcessEnv = process.env): TimeOfDa
 
   return { hour: Number(match[1]), minute: Number(match[2]) };
 }
+
+/** Reads the path of the YouTube cookies file from `YOUTUBE_COOKIES_FILE`; unset or empty means no cookies. */
+export function readYouTubeCookiesFile(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  return env.YOUTUBE_COOKIES_FILE?.trim() || undefined;
+}

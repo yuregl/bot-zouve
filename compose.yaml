@@ -11,6 +11,8 @@ services:
         condition: service_healthy
     volumes:
       - bot-logs:/app/logs
+      # YouTube cookies for yt-dlp, used when YOUTUBE_COOKIES_FILE=cookies/youtube.txt.
+      - ./cookies:/app/cookies:ro
     restart: unless-stopped
 
   mongo:

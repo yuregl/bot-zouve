@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Readable } from "node:stream";
 import { mock, test } from "node:test";
 import type { Track } from "../../src/music/track.js";
@@ -39,6 +42,7 @@ const {
   youtubeLinkResolver,
   youtubeSearchResolver,
   checkYouTubeVideo,
+  useYouTubeCookies,
 } = await import("../../src/infra/youtube.js");
 
 type FakeSubprocess = Promise<unknown> & { stdout: Readable; pid: number; kill: () => boolean; killed: boolean };
@@ -549,4 +553,32 @@ test("checkYouTubeVideo reports deleted, private, and not embeddable videos as u
 test("checkYouTubeVideo reports server errors and network failures as unknown", async () => {
   assert.equal(await checkYouTubeVideo(VIDEO_URL, fakeFetch(500).fetchFn), "unknown");
   assert.equal(await checkYouTubeVideo(VIDEO_URL, fakeFetch(new Error("getaddrinfo ENOTFOUND")).fetchFn), "unknown");
+});
+
+// Runs last: once cookies are configured, every later yt-dlp call would send them.
+test("useYouTubeCookies makes yt-dlp send a copy of the cookies file", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "zouve-test-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const file = join(dir, "youtube.txt");
+  await writeFile(file, "# Netscape HTTP Cookie File");
+
+  ytDlpCalls.length = 0;
+  ytDlpJson = () => ({ title: "Song", duration: 200 });
+  await resolveYouTubeVideo("dQw4w9WgXcQ", "Ana");
+  assert.equal("cookies" in (ytDlpCalls.at(-1)?.flags ?? {}), false);
+
+  await useYouTubeCookies(file);
+  await resolveYouTubeVideo("dQw4w9WgXcQ", "Ana");
+  await resolveYouTubeList({ listId: "PLabc" }, "Ana").catch(() => undefined);
+
+  const [, videoCall, listCall] = ytDlpCalls;
+  const copy = videoCall?.flags.cookies;
+  assert.equal(typeof copy, "string");
+  assert.notEqual(copy, file);
+  assert.equal(await readFile(String(copy), "utf8"), "# Netscape HTTP Cookie File");
+  assert.equal(listCall?.flags.cookies, copy);
+});
+
+test("useYouTubeCookies fails when the cookies file cannot be read", async () => {
+  await assert.rejects(useYouTubeCookies(join(tmpdir(), "zouve-missing-cookies.txt")), /Could not read the YouTube cookies file/);
 });

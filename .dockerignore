@@ -4,9 +4,10 @@ dist
 logs
 coverage
 
-# Secrets stay out of the image; Docker Compose passes them as variables.
+# Secrets stay out of the image; Docker Compose passes them as variables or mounts them.
 .env
 .env.*
+cookies
 
 .git
 .github

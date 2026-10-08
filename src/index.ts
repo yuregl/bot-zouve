@@ -1,10 +1,10 @@
 import { Client, Events, GatewayIntentBits } from "discord.js";
 import { startBirthdayAnnouncer } from "./birthdays/birthday-announcer.js";
 import { registerCommands } from "./commands/index.js";
-import { readAnnounceTime, readTimeouts } from "./infra/config.js";
+import { readAnnounceTime, readTimeouts, readYouTubeCookiesFile } from "./infra/config.js";
 import { createLogger } from "./infra/logger.js";
 import { connectMongo, isMongoConnected } from "./infra/db/mongo.js";
-import { checkYouTubeVideo } from "./infra/youtube.js";
+import { checkYouTubeVideo, useYouTubeCookies } from "./infra/youtube.js";
 import { MusicManager } from "./music/music-manager.js";
 import { findMusicChannel } from "./music/music-channel.js";
 import { watchVoicePresence } from "./music/voice-presence.js";
@@ -35,6 +35,11 @@ const client = new Client({
 // Fail at startup when a time variable is invalid, instead of misbehaving later.
 const musicManager = new MusicManager(undefined, readTimeouts());
 const announceTime = readAnnounceTime();
+const youtubeCookiesFile = readYouTubeCookiesFile();
+
+if (youtubeCookiesFile) {
+  await useYouTubeCookies(youtubeCookiesFile);
+}
 
 registerCommands(client, musicManager);
 watchVoicePresence(client, musicManager);

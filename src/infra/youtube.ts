@@ -1,3 +1,6 @@
+import { copyFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Readable } from "node:stream";
 import { youtubeDl } from "youtube-dl-exec";
 import type { AudioSource, Track } from "../music/track.js";
@@ -24,15 +27,41 @@ const EXPIRY_MARGIN_MS = 60_000;
 // download (HTTP 403) that succeeds when retried.
 const YT_DLP_ATTEMPTS = 2;
 
-const commonFlags = {
-  noWarnings: true,
-  // yt-dlp needs a JavaScript runtime to extract YouTube formats; reuse the bot's Node.js.
-  jsRuntimes: `node:${process.execPath}`,
-} as const;
+// The copy of the YouTube cookies file that yt-dlp sends, when one is configured.
+let cookiesFile: string | undefined;
+
+/**
+ * Makes yt-dlp send the YouTube cookies in the given file (Netscape format), which gets past
+ * YouTube's "confirm you're not a bot" check. yt-dlp writes refreshed cookies back to the file
+ * it reads, so it gets a temporary copy and the original can be read-only.
+ */
+export async function useYouTubeCookies(file: string): Promise<void> {
+  const copy = join(tmpdir(), `zouve-youtube-cookies-${process.pid}.txt`);
+
+  try {
+    await copyFile(file, copy);
+  } catch (error) {
+    throw new Error(`Could not read the YouTube cookies file "${file}" (YOUTUBE_COOKIES_FILE).`, { cause: error });
+  }
+
+  cookiesFile = copy;
+  logger.info("YouTube cookies loaded", { file });
+}
+
+function commonFlags() {
+  return {
+    noWarnings: true,
+    // yt-dlp needs a JavaScript runtime to extract YouTube formats; reuse the bot's Node.js.
+    jsRuntimes: `node:${process.execPath}` as const,
+    ...(cookiesFile ? { cookies: cookiesFile } : {}),
+  };
+}
 
 // youtube-dl-exec turns `noPlaylist: false` into an invalid `--no-no-playlist`, so playlist
 // requests use commonFlags instead of overriding this.
-const baseFlags = { ...commonFlags, noPlaylist: true } as const;
+function baseFlags() {
+  return { ...commonFlags(), noPlaylist: true };
+}
 
 export function getYouTubeVideoId(query: string): string | undefined {
   let url: URL;
@@ -94,7 +123,7 @@ export function getYouTubeList(query: string): YouTubeListLink | undefined {
 
 async function fetchVideoInfo(url: string) {
   const info = await youtubeDl(url, {
-    ...baseFlags,
+    ...baseFlags(),
     dumpSingleJson: true,
     format: OPUS_WEBM_FORMAT,
   });
@@ -198,7 +227,7 @@ export async function searchYouTubeByDuration(
 ): Promise<Track> {
   logger.debug("Searching YouTube by duration", { terms, durationSeconds });
   const results = await youtubeDl(`ytsearch${DURATION_MATCH_CANDIDATES}:${terms}`, {
-    ...baseFlags,
+    ...baseFlags(),
     dumpSingleJson: true,
     flatPlaylist: true,
   });
@@ -242,7 +271,7 @@ export async function resolveYouTubeList(link: YouTubeListLink, requestedBy: str
   let entries: ListEntry[];
   try {
     const result = await youtubeDl(listUrl, {
-      ...commonFlags,
+      ...commonFlags(),
       yesPlaylist: true,
       dumpSingleJson: true,
       flatPlaylist: true,
@@ -484,7 +513,7 @@ export function parseContentRangeSize(header: string | null): number | undefined
 function spawnYtDlpStream(track: Track): Readable {
   const subprocess = youtubeDl.exec(
     track.url,
-    { ...baseFlags, format: OPUS_WEBM_FORMAT, output: "-", quiet: true },
+    { ...baseFlags(), format: OPUS_WEBM_FORMAT, output: "-", quiet: true },
     { stdio: ["ignore", "pipe", "pipe"] },
   );
 
